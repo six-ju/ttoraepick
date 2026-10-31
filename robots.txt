@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /admin/
-Sitemap: https://six-ju.github.io/ttoraepick/sitemap.xml
+Sitemap: https://ttorae.com/sitemap.xml

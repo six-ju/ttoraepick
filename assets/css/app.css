@@ -393,3 +393,51 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 [data-theme="dark"] .cmp.low { color: #4ade80; } [data-theme="dark"] .cmp.alt { color: #93c5fd; }
 
 .hero-link { color: var(--brand); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- 커스텀 셀렉트 ---------- */
+.tps-native { position: absolute !important; opacity: 0 !important; pointer-events: none !important; width: 1px !important; height: 1px !important; overflow: hidden; }
+.sel::after { display: none; }
+.tps-btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; height: 100%; min-height: 34px; max-width: 168px; padding: 0 10px 0 14px; border-radius: 999px; background: var(--bg2); font-size: 14px; font-weight: 700; color: var(--ink); white-space: nowrap; transition: background .2s, box-shadow .2s, color .2s; }
+.tps-btn:hover { box-shadow: inset 0 0 0 1px var(--line); }
+.tps-btn.set { color: var(--brand); }
+.tps-btn .tps-val { overflow: hidden; text-overflow: ellipsis; }
+.tps-btn .tps-chev { width: 16px; height: 16px; flex-shrink: 0; stroke-width: 2.4; color: var(--ink3); transition: transform .25s var(--spring); }
+.tps-btn.open .tps-chev { transform: rotate(180deg); }
+.tps-btn.open { box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 35%, transparent); }
+.sel + .sel { margin-left: 4px; }
+.tps-btn.sort { height: auto; min-height: 32px; padding: 6px 10px 6px 14px; font-size: 13px; background-image: none; border: 1px solid var(--line); }
+.tps-pop { position: fixed; inset: 0; z-index: 85; }
+.tps-bg { position: absolute; inset: 0; }
+.tps-card { position: fixed; display: flex; flex-direction: column; background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow-lg); padding: 6px; transform-origin: top center; animation: tpsIn .2s var(--ease) both; }
+.tps-pop.out .tps-card { animation: tpsOut .16s ease-in forwards; }
+@keyframes tpsIn { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+@keyframes tpsOut { to { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.tps-grab, .tps-head { display: none; }
+.tps-search { display: none; padding: 4px 4px 6px; }
+.tps-pop.has-search .tps-search { display: block; }
+.tps-search input { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 12px; background: var(--chip); padding: 0 12px; font-size: 14px; outline: 0; }
+.tps-search input:focus { border-color: var(--brand); background: var(--bg2); }
+.tps-list { list-style: none; margin: 0; padding: 2px; overflow-y: auto; overscroll-behavior: contain; outline: 0; scrollbar-width: thin; }
+.tps-list li[data-i] { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 11px; font-size: 14px; font-weight: 600; color: var(--ink2); cursor: pointer; transition: background .12s, color .12s; }
+.tps-list li[data-i] span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tps-list li[data-i] small { font-size: 11px; font-weight: 700; color: var(--ink3); background: var(--chip); padding: 2px 7px; border-radius: 999px; }
+.tps-list li[data-i]:hover, .tps-list li.hl { background: var(--chip); color: var(--ink); }
+.tps-list li.on { color: var(--brand); font-weight: 800; background: color-mix(in srgb, var(--brand) 9%, transparent); }
+.tps-ck { width: 16px; height: 16px; stroke-width: 2.6; opacity: 0; flex-shrink: 0; }
+.tps-list li.on .tps-ck { opacity: 1; }
+.tps-empty { padding: 18px; text-align: center; color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) {
+  .tps-bg { background: rgba(8,10,18,.5); animation: fadeIn .25s both; }
+  .tps-pop.out .tps-bg { animation: fadeOut .2s forwards; }
+  .tps-card { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto !important; max-height: 78dvh; border-radius: 24px 24px 0 0; border: 0; padding: 20px 12px calc(12px + env(safe-area-inset-bottom)); animation: tpsSheet .34s var(--ease) both; }
+  .tps-pop.out .tps-card { animation: tpsSheetOut .2s ease-in forwards; }
+  @keyframes tpsSheet { from { transform: translateY(100%); } }
+  @keyframes tpsSheetOut { to { transform: translateY(100%); } }
+  .tps-grab { display: block; position: absolute; top: 8px; left: 50%; width: 42px; height: 5px; margin-left: -21px; border-radius: 3px; background: color-mix(in srgb, var(--ink3) 45%, transparent); }
+  .tps-head { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px 10px; }
+  .tps-head b { font-size: 17px; }
+  .tps-x { width: 34px; height: 34px; border-radius: 50%; background: var(--chip); font-size: 20px; line-height: 1; }
+  .tps-list { max-height: none !important; flex: 1; }
+  .tps-list li[data-i] { padding: 14px 12px; font-size: 15px; }
+  .msearch-body .tps-btn { width: 100%; max-width: none; height: 44px; justify-content: space-between; padding: 0 14px 0 16px; }
+}

@@ -8,12 +8,17 @@
 <meta name="description" content="10대부터 60대까지, 쿠팡·네이버쇼핑·다이소·무신사·올리브영에서 내 또래가 많이 찾고 사는 상품과 가격을 한 번에 비교하세요.">
 <link rel="canonical" href="https://ttorae.com/">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="ko_KR">
+<meta name="keywords" content="연령별 인기상품, 20대 인기템, 30대 선물, 50대 선물, 쿠팡 인기상품, 네이버쇼핑 베스트, 다이소 인기템, 무신사 랭킹, 올리브영 랭킹, 최저가 비교">
 <meta property="og:site_name" content="또래픽">
 <meta property="og:title" content="또래픽 - 지금 내 또래는 뭘 살까? 연령별 인기상품 한눈에">
 <meta property="og:description" content="10대부터 60대까지, 쿠팡·네이버쇼핑·다이소·무신사·올리브영에서 내 또래가 많이 찾고 사는 상품과 가격을 한 번에 비교하세요.">
 <meta property="og:image" content="https://ttorae.com/assets/og.png">
 <meta property="og:url" content="https://ttorae.com/">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="또래픽 - 지금 내 또래는 뭘 살까? 연령별 인기상품 한눈에">
+<meta name="twitter:description" content="10대부터 60대까지, 쿠팡·네이버쇼핑·다이소·무신사·올리브영에서 내 또래가 많이 찾고 사는 상품과 가격을 한 번에 비교하세요.">
+<meta name="twitter:image" content="https://ttorae.com/assets/og.png">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0f14" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -23,10 +28,14 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="assets/css/app.css">
 <script>(()=>{const t=localStorage.getItem('tp_theme');if(t)document.documentElement.dataset.theme=t;})()</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"또래픽"}</script>
-
+<script type="application/ld+json">[{"@context":"https://schema.org","@type":"WebSite","name":"또래픽","alternateName":"또래픽 ttorae","url":"https://ttorae.com/","inLanguage":"ko-KR","potentialAction":{"@type":"SearchAction","target":"https://ttorae.com/?q={search_term_string}","query-input":"required name=search_term_string"}},{"@context":"https://schema.org","@type":"Organization","name":"또래픽","url":"https://ttorae.com/","logo":"https://ttorae.com/assets/icon512.png","email":"help@ttorae.pick"}]</script>
+<meta name="google-adsense-account" content="ca-pub-3746750038855279">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3746750038855279" crossorigin="anonymous"></script>
+<meta name="naver-site-verification" content="1e07e08af8526d5513774eafc2fd9e2465baaf28">
 <script src="data/catalog.js" defer></script>
 <script src="assets/js/static-api.js" defer></script>
+<script>window.TP_FB={"apiKey":"AIzaSyArEhBIccZ5ebCM0bHHK3ZbIucaUZY17Qs","authDomain":"ttorae-d2663.firebaseapp.com","projectId":"ttorae-d2663","storageBucket":"ttorae-d2663.firebasestorage.app","messagingSenderId":"1020922050683","appId":"1:1020922050683:web:64c2b731118f9905fb8ade"};</script>
+<script src="assets/js/fb-log.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">본문 바로가기</a>
@@ -42,8 +51,8 @@
       <label class="sel" title="카테고리">
         <select id="searchCat" aria-label="카테고리 선택"><option value="all">전체 카테고리</option></select>
       </label>
-      <label class="sel" title="회사/브랜드">
-        <select id="searchBrand" aria-label="회사(브랜드) 선택"><option value="">모든 회사</option></select>
+      <label class="sel" title="쇼핑몰">
+        <select id="searchBrand" aria-label="쇼핑몰 선택"><option value="all">모든 쇼핑몰</option></select>
       </label>
       <div class="search-input">
         <input id="searchInput" type="search" placeholder="상품명, 브랜드, 키워드 검색" aria-label="검색어" enterkeyhint="search">
@@ -105,6 +114,11 @@
 <footer class="footer">
   <div class="footer-in">
     <div class="f-brand"><b>또래픽</b><span id="footTagline">지금 내 또래는 뭘 살까?</span></div>
+<nav class="f-rank" aria-label="인기상품 랭킹">
+      <div><b>연령별 랭킹</b><a href="best/10.html">10대 인기상품</a><a href="best/20.html">20대 인기상품</a><a href="best/30.html">30대 인기상품</a><a href="best/40.html">40대 인기상품</a><a href="best/50.html">50대 인기상품</a><a href="best/60.html">60대+ 인기상품</a></div>
+      <div><b>분야별 랭킹</b><a href="best/cat-food.html">식품 순위</a><a href="best/cat-health.html">생활/건강 순위</a><a href="best/cat-beauty.html">뷰티 순위</a><a href="best/cat-fashion.html">패션의류 순위</a><a href="best/cat-acc.html">패션잡화 순위</a><a href="best/cat-digital.html">디지털/가전 순위</a><a href="best/cat-living.html">가구/인테리어 순위</a><a href="best/cat-sports.html">스포츠/레저 순위</a><a href="best/cat-baby.html">출산/육아 순위</a></div>
+      <div><b>트렌드</b><a href="trends/index.html">이번 주 연령별 트렌드 리포트</a><a href="best/index.html">전체 랭킹 보기</a></div>
+    </nav>
     <p class="disclosure" id="disclosure"></p>
     <p class="notice" id="priceNotice"></p>
     <p class="notice">상품 정보·가격·재고·배송은 각 판매처 책임이며, 또래픽은 통신판매 당사자가 아닙니다. 순위는 각 쇼핑몰 공개 랭킹과 네이버 데이터랩 연령별 검색 데이터를 바탕으로 산출합니다.</p>

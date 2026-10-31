@@ -10,7 +10,9 @@
   const isMobile = () => matchMedia('(max-width: 860px)').matches;
   // 정적 빌드(GitHub Pages/파일) 여부: 서버 없이 static-api.js 가 /api 를 대신 처리
   const STATIC = !!window.TP_STATIC;
-  const detailUrl = id => STATIC ? location.pathname + '?p=' + id : '/p/' + id;
+  const ROOT = (() => { try { return new URL('./', document.baseURI).pathname; } catch { return '/'; } })();
+  const detailUrl = id => STATIC ? ROOT + '?p=' + id : '/p/' + id;
+  const shareUrl = id => location.origin + (STATIC ? ROOT + '?p=' + id : '/p/' + id);
   const detailIdFromUrl = () => STATIC ? +(new URLSearchParams(location.search).get('p') || 0) : +((location.pathname.match(/^\/p\/(\d+)/) || [])[1] || 0);
   const initialDetailId = (() => { try { return +(new URLSearchParams(location.search).get('p') || (location.pathname.match(/^\/p\/(\d+)/) || [])[1] || 0); } catch { return 0; } })();
   const buyHref = p => STATIC ? (p.go || '#') : `/go/${p.id}?age=${state.age}&sid=${sid}&from=detail`;
@@ -37,6 +39,7 @@
   const track = (type, data = {}) => { evq.push({ type, sid, age: state.age === 'all' ? null : state.age, ...data }); if (evq.length >= 10) flush(); };
   const flush = () => {
     if (!evq.length) return;
+    if (STATIC) { const batch = evq.splice(0, 30); if (window.TP_LOG) window.TP_LOG(batch); return; }
     const body = JSON.stringify({ events: evq.splice(0, 30) });
     if (navigator.sendBeacon) navigator.sendBeacon('/api/events', new Blob([body], { type: 'application/json' }));
     else fetch('/api/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
@@ -45,6 +48,10 @@
   addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
 
   const api = async (url) => { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); };
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch { /* 권한 없음 → 대체 */ }
+    try { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; } catch { return false; }
+  }
   const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800); };
 
   // ---------- 찜 / 최근 본 ----------
@@ -78,7 +85,7 @@
     if (state.q) u.set('q', state.q);
     if (state.sort !== 'popular') u.set('sort', state.sort);
     const s = u.toString();
-    return (STATIC ? location.pathname : '/') + (s ? '?' + s : '');
+    return (STATIC ? ROOT : '/') + (s ? '?' + s : '');
   }
   const syncUrl = () => { if (!detailOpen) try { history.replaceState(history.state, '', listUrl()); } catch { /* */ } };
 
@@ -320,8 +327,7 @@
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-src]'); if (!b) return;
       state.source = b.dataset.src;
-      $$('[data-src]', box).forEach(x => x.setAttribute('aria-pressed', x.dataset.src === state.source));
-      loadBrands(); invalidate(); syncUrl();
+      syncSourceUI(); invalidate(); syncUrl();
     });
     $('#sortSel').value = state.sort;
     $('#sortSel').onchange = e => { state.sort = e.target.value; invalidate(); syncUrl(); };
@@ -338,35 +344,33 @@
     const b = e.target.closest('[data-af]'); if (!b) return;
     const k = b.dataset.af;
     if (k === 'q') { state.q = ''; $('#searchInput').value = ''; $('#searchClear').hidden = true; }
-    if (k === 'brand') { state.brand = ''; $('#searchBrand').value = ''; }
-    if (k === 'source') { state.source = 'all'; $$('[data-src]').forEach(x => x.setAttribute('aria-pressed', x.dataset.src === 'all')); loadBrands(); }
+    if (k === 'brand') { state.brand = ''; }
+    if (k === 'source') { state.source = 'all'; syncSourceUI(); }
     invalidate(); syncUrl();
   });
   function resetFilters() {
     Object.assign(state, { q: '', brand: '', source: 'all' });
-    $('#searchInput').value = ''; $('#searchBrand').value = ''; $('#searchClear').hidden = true;
-    $$('[data-src]').forEach(x => x.setAttribute('aria-pressed', x.dataset.src === 'all'));
-    loadBrands(); invalidate(); syncUrl();
+    $('#searchInput').value = ''; $('#searchClear').hidden = true;
+    syncSourceUI(); invalidate(); syncUrl();
   }
 
   // ---------- 검색 (카테고리 → 회사 → 검색어) ----------
+  // '회사' 선택 = 판매 쇼핑몰(쿠팡·네이버·다이소·무신사·올리브영). 개수는 선택한 카테고리 기준
   async function loadBrands() {
     const cat = $('#searchCat').value, sel = $('#searchBrand');
-    try {
-      const list = await api(`/api/brands?category=${cat}&source=${state.source === 'all' ? '' : state.source}`);
-      const cur = state.brand;
-      sel.innerHTML = '<option value="">모든 회사</option>' + list.map(b => `<option value="${esc(b.name)}">${esc(b.name)} (${b.count})</option>`).join('');
-      if (cur && !list.some(b => b.name === cur)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(cur)}">${esc(cur)}</option>`);
-      sel.value = cur;
-    } catch { /* 무시 */ }
+    let counts = {};
+    try { counts = Object.fromEntries((await api('/api/sources?category=' + cat)).map(s => [s.code, s.count])); } catch { /* 개수 없이 표시 */ }
+    sel.innerHTML = '<option value="all">모든 쇼핑몰</option>' + META.sources.filter(s => s.count).map(s => '<option value="' + s.code + '">' + esc(s.name) + (counts[s.code] != null ? ' (' + counts[s.code] + ')' : '') + '</option>').join('');
+    sel.value = state.source;
   }
-  $('#searchCat').addEventListener('change', () => { state.brand = ''; loadBrands(); });
-  $('#searchBrand').addEventListener('change', e => { state.brand = e.target.value; const idx = CATS.findIndex(c => c.slug === $('#searchCat').value); if (idx !== activeIdx) goTo(idx, true); invalidate(); syncUrl(); });
+  const syncSourceUI = () => { $$('#srcChips [data-src]').forEach(x => x.setAttribute('aria-pressed', x.dataset.src === state.source)); if ($('#searchBrand').value !== state.source) $('#searchBrand').value = state.source; };
+  $('#searchCat').addEventListener('change', () => { loadBrands(); });
+  $('#searchBrand').addEventListener('change', e => { state.source = e.target.value || 'all'; syncSourceUI(); const idx = CATS.findIndex(c => c.slug === $('#searchCat').value); if (idx !== activeIdx) goTo(idx, true); invalidate(); syncUrl(); });
   $('#searchForm').addEventListener('submit', e => { e.preventDefault(); runSearch($('#searchInput').value.trim(), true); });
   function runSearch(text, fromForm) {
     state.q = text;
     $('#searchInput').value = text; $('#searchClear').hidden = !text;
-    if (fromForm) state.brand = $('#searchBrand').value;
+    if (fromForm) { state.source = $('#searchBrand').value || 'all'; syncSourceUI(); }
     hideSuggest(); closeSearchSheet();
     const idx = Math.max(0, CATS.findIndex(c => c.slug === (fromForm ? $('#searchCat').value : state.cat)));
     if (idx !== activeIdx) goTo(idx, true);
@@ -400,7 +404,7 @@
   $('#suggest').addEventListener('click', e => {
     const b = e.target.closest('.sg-item'); if (!b) return;
     if (b.dataset.pid) { hideSuggest(); closeSearchSheet(); openDetail(+b.dataset.pid, null); return; }
-    if (b.dataset.t === 'brand') { state.brand = b.dataset.v; $('#searchInput').value = ''; state.q = ''; loadBrands(); hideSuggest(); closeSearchSheet(); invalidate(); syncUrl(); return; }
+    if (b.dataset.t === 'brand') { state.brand = b.dataset.v; $('#searchInput').value = ''; state.q = ''; hideSuggest(); closeSearchSheet(); invalidate(); syncUrl(); return; }
     runSearch(b.dataset.v);
   });
   const hideSuggest = () => { $('#suggest').hidden = true; };
@@ -483,7 +487,7 @@
   function offersHtml(p, offers) {
     if (offers.length < 2) return '';
     return '<div class="d-offers"><div class="d-offers-h">판매처별 가격 비교</div>' + offers.map((o, i) =>
-      '<a class="offer ' + (i === 0 ? 'best' : '') + '" href="' + esc(o.href) + '" target="_blank" rel="sponsored noopener nofollow"><span class="o-mall"><i style="background:' + ((META.sources.find(s => s.code === o.source) || {}).color || '#999') + '"></i>' + esc(o.mall) + (o.self ? '' : ' <small>같은 상품</small>') + '</span><span class="o-price">' + (i === 0 ? '<em>최저</em>' : '+' + num(o.price - offers[0].price) + '원 ') + '<b>' + won(o.price) + '</b></span></a>').join('') + '</div>';
+      '<a class="offer ' + (i === 0 ? 'best' : '') + '" data-src="' + esc(o.source) + '" href="' + esc(o.href) + '" target="_blank" rel="sponsored noopener nofollow"><span class="o-mall"><i style="background:' + ((META.sources.find(s => s.code === o.source) || {}).color || '#999') + '"></i>' + esc(o.mall) + (o.self ? '' : ' <small>같은 상품</small>') + '</span><span class="o-price">' + (i === 0 ? '<em>최저</em>' : '+' + num(o.price - offers[0].price) + '원 ') + '<b>' + won(o.price) + '</b></span></a>').join('') + '</div>';
   }
   function sparkline(ph) {
     const w = 300, h = 64, vals = ph.map(x => x.price), mn = Math.min(...vals), mx = Math.max(...vals), sp = mx - mn || 1;
@@ -538,6 +542,7 @@
       setVT(thumb);
       fillDetail(p);
       detail.hidden = false; detail.classList.remove('closing');
+      $('#detailScroll').scrollTop = 0;
       lockScroll(true);
       setVT($('.d-img', sheet), 'pd-img');
     };
@@ -570,7 +575,7 @@
     const thumb = card && $('.thumb', card);
     const r = thumb && thumb.getBoundingClientRect();
     const visible = r && r.bottom > 0 && r.top < innerHeight;
-    const hide = () => { detail.hidden = true; lockScroll(false); setVT($('.d-img', sheet)); sheet.style.transform = ''; };
+    const hide = () => { detail.hidden = true; lockScroll(false); setVT($('.d-img', sheet)); sheet.style.transform = ''; $('#detailScroll').scrollTop = 0; };
     try {
       if (!fromPop && pushedHistory) { pushedHistory = false; history.back(); }
       else if (!fromPop) history.replaceState(null, '', listUrl());
@@ -592,12 +597,12 @@
     if (rel) { e.preventDefault(); openDetail(+rel.dataset.rel, null); return; }
     const sh = e.target.closest('[data-share]');
     if (sh) {
-      const p = productCache.get(+sh.dataset.share) || itemById(+sh.dataset.share), url = (STATIC ? location.href.split('?')[0] + '?p=' : location.origin + '/p/') + sh.dataset.share;
-      track('share', { productId: p?.id });
-      if (navigator.share) navigator.share({ title: p?.title, text: (p?.title || '') + ' - 또래픽', url }).catch(() => {});
-      else navigator.clipboard?.writeText(url).then(() => toast('링크를 복사했어요'));
+      const id = +sh.dataset.share, p = productCache.get(id) || itemById(id), url = shareUrl(id);
+      track('share', { productId: id });
+      copyText(url).then(ok => toast(ok ? '상품 링크를 복사했어요 · 붙여넣기 하면 이 상품이 바로 열려요' : url));
     }
-    if (e.target.closest('.buy, .offer')) flush();
+    const out = e.target.closest('.buy, .offer');
+    if (out) { if (STATIC && detailOpen) { const p = baseOf(detailOpen); track('click', { productId: detailOpen, source: out.classList.contains('offer') ? (out.dataset.src || p?.source) : p?.source, category: p?.category, slot: out.classList.contains('offer') ? 'offer' : 'detail' }); } flush(); }
   });
   // 모바일: 시트를 아래로 끌어서 닫기
   (() => {
@@ -798,7 +803,7 @@
     if (!META.ages.some(a => a.code === state.age)) state.age = 'all';
     renderAges(); renderSources(); renderCats();
     enhanceSelect($('#searchCat'), { title: '카테고리 선택' });
-    enhanceSelect($('#searchBrand'), { title: '회사(브랜드) 선택', searchable: true });
+    enhanceSelect($('#searchBrand'), { title: '쇼핑몰 선택' });
     enhanceSelect($('#sortSel'), { title: '정렬' });
     $('#searchInput').value = state.q; $('#searchClear').hidden = !state.q;
     await loadBrands();

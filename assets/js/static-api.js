@@ -70,6 +70,7 @@
     if (path === '/api/products') return ok(products(q));
     const m = path.match(/^\/api\/products\/(\d+)$/); if (m) return ok(detail(+m[1]));
     if (path === '/api/brands') return ok(brands(q));
+    if (path === '/api/sources') { const cat = q.get('category'), m = {}; P.forEach(p => { if (!cat || cat === 'all' || p.category === cat) m[p.source] = (m[p.source] || 0) + 1; }); return ok(Object.entries(m).map(([code, count]) => ({ code, count }))); }
     if (path === '/api/keywords') return ok(keywords(q));
     if (path === '/api/suggest') return ok(suggest(q));
     if (path === '/api/events') return ok({ ok: true });

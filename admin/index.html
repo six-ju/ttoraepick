@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>또래픽 어드민</title>
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="admin.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<!-- 로그인 -->
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginForm">
+    <div class="lg-logo"><img src="../assets/favicon.svg" alt=""> 또래픽 <span>ADMIN</span></div>
+    <h1>운영 콘솔 로그인</h1>
+    <label>이메일<input name="email" type="email" required autocomplete="username"></label>
+    <label>비밀번호<input name="password" type="password" required autocomplete="current-password"></label>
+    <p class="err" id="loginErr"></p>
+    <button class="btn primary lg" type="submit">로그인</button>
+    <p class="hint">계정은 대표(오너)가 <b>조직·직원</b> 메뉴에서 발급합니다.</p>
+  </form>
+</div>
+
+<!-- 앱 -->
+<div class="app" id="app" hidden>
+  <aside class="side" id="side">
+    <div class="brand"><img src="../assets/favicon.svg" alt=""><b>또래픽</b><span>ADMIN</span></div>
+    <nav id="nav"></nav>
+    <div class="side-foot"><a href="/" target="_blank" class="view-site">↗ 사이트 보기</a></div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <button class="icon only-m" id="menuBtn" aria-label="메뉴">☰</button>
+      <h1 id="pageTitle">대시보드</h1>
+      <div class="top-tools">
+        <div class="seg" id="rangeSeg"><button data-days="7">7일</button><button data-days="30" class="on">30일</button><button data-days="90">90일</button></div>
+        <label class="demo-toggle" title="데모(가상) 데이터 포함 여부"><input type="checkbox" id="demoToggle" checked> 데모 포함</label>
+        <button class="icon" id="themeToggle" aria-label="테마">◐</button>
+        <div class="me" id="me"></div>
+      </div>
+    </header>
+    <div class="banner" id="banner" hidden></div>
+    <main class="view" id="view"></main>
+  </div>
+</div>
+
+<div class="drawer" id="drawer" hidden><div class="dr-bg" data-close></div><div class="dr-panel" id="drawerPanel"></div></div>
+<div class="toast" id="toast"></div>
+<script>window.TP_FB={"apiKey":"AIzaSyArEhBIccZ5ebCM0bHHK3ZbIucaUZY17Qs","authDomain":"ttorae-d2663.firebaseapp.com","projectId":"ttorae-d2663","storageBucket":"ttorae-d2663.firebasestorage.app","messagingSenderId":"1020922050683","appId":"1:1020922050683:web:64c2b731118f9905fb8ade"};window.TP_OWNER="dbrwnsgh0410@gmail.com";</script>
+<script src="../data/catalog.js"></script>
+<script src="admin-meta.js"></script>
+<script src="admin-fb.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

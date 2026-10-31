@@ -614,6 +614,7 @@
   });
   addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (tpsCur) return closeTps();
     if (!$('#drawer').hidden) return closeDrawer();
     if (detailOpen) return closeDetail();
     closeSearchSheet();
@@ -665,6 +666,94 @@
     });
   }
 
+  // ---------- 커스텀 셀렉트 (사이트 디자인과 동일한 드롭다운 / 모바일은 하단 시트) ----------
+  // 원래 <select> 는 숨겨서 값·change 이벤트를 그대로 쓰고, 보이는 UI만 교체
+  const tpsPop = document.createElement('div');
+  tpsPop.className = 'tps-pop'; tpsPop.hidden = true; tpsPop.setAttribute('role', 'dialog');
+  tpsPop.innerHTML = '<div class="tps-bg" data-tps-close></div><div class="tps-card"><div class="tps-grab"></div><div class="tps-head"><b class="tps-title"></b><button type="button" class="tps-x" data-tps-close aria-label="닫기">×</button></div><div class="tps-search"><input type="search" placeholder="검색" aria-label="목록 검색"></div><ul class="tps-list" role="listbox"></ul></div>';
+  document.body.appendChild(tpsPop);
+  let tpsCur = null, tpsIdx = -1;
+  const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  const optParts = t => { const m = String(t).match(/^(.*?)\s*\((\d[\d,]*)\)$/); return m ? [m[1], m[2]] : [t, '']; };
+  function enhanceSelect(sel, { title, searchable } = {}) {
+    if (sel._tps) return;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'tps-btn ' + (sel.className || ''); btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', sel.getAttribute('aria-label') || title || '');
+    btn.innerHTML = '<span class="tps-val"></span><svg viewBox="0 0 24 24" class="tps-chev"><path d="m6 9 6 6 6-6"/></svg>';
+    sel.classList.add('tps-native'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    sel.insertAdjacentElement('afterend', btn);
+    const update = () => { const o = sel.options[sel.selectedIndex]; $('.tps-val', btn).textContent = o ? optParts(o.textContent)[0] : ''; btn.classList.toggle('set', !!sel.value && sel.value !== 'all' && sel.value !== 'popular'); };
+    sel._tps = { btn, update, title, searchable };
+    Object.defineProperty(sel, 'value', { configurable: true, get() { return valueDesc.get.call(this); }, set(v) { valueDesc.set.call(this, v); update(); } });
+    new MutationObserver(update).observe(sel, { childList: true });
+    sel.addEventListener('change', update);
+    btn.addEventListener('click', () => (tpsCur === sel ? closeTps() : openTps(sel)));
+    btn.addEventListener('keydown', e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openTps(sel); } });
+    update();
+  }
+  function renderTpsList(filter = '') {
+    const sel = tpsCur, f = filter.trim().toLowerCase();
+    const items = [...sel.options].map((o, i) => ({ o, i })).filter(({ o }) => !f || o.textContent.toLowerCase().includes(f));
+    $('.tps-list', tpsPop).innerHTML = items.map(({ o, i }) => { const [name, cnt] = optParts(o.textContent); return '<li role="option" data-i="' + i + '" aria-selected="' + (i === sel.selectedIndex) + '" class="' + (i === sel.selectedIndex ? 'on' : '') + '"><span>' + esc(name) + '</span>' + (cnt ? '<small>' + esc(cnt) + '</small>' : '') + '<svg viewBox="0 0 24 24" class="tps-ck"><path d="m5 12 5 5 9-10"/></svg></li>'; }).join('') || '<li class="tps-empty">검색 결과가 없어요</li>';
+    tpsIdx = items.findIndex(x => x.i === sel.selectedIndex);
+  }
+  function placeTps() {
+    const card = $('.tps-card', tpsPop);
+    if (isMobile()) { card.style.left = card.style.top = card.style.width = ''; return; }
+    const r = tpsCur._tps.btn.getBoundingClientRect();
+    const w = Math.max(r.width, 240), left = Math.min(r.left, innerWidth - w - 12);
+    const below = innerHeight - r.bottom - 16, maxH = Math.min(420, Math.max(below, 220));
+    card.style.width = w + 'px'; card.style.left = left + 'px';
+    card.style.top = (below >= 220 ? r.bottom + 8 : Math.max(12, r.top - maxH - 8)) + 'px';
+    $('.tps-list', tpsPop).style.maxHeight = (maxH - (tpsCur._tps.searchable ? 56 : 0)) + 'px';
+  }
+  function openTps(sel) {
+    if (tpsCur) closeTps(true);
+    tpsCur = sel;
+    const many = sel.options.length > 10 || sel._tps.searchable;
+    tpsPop.classList.toggle('has-search', !!many);
+    $('.tps-title', tpsPop).textContent = sel._tps.title || sel.getAttribute('aria-label') || '';
+    $('.tps-search input', tpsPop).value = '';
+    renderTpsList();
+    tpsPop.hidden = false; tpsPop.classList.remove('out');
+    sel._tps.btn.setAttribute('aria-expanded', 'true'); sel._tps.btn.classList.add('open');
+    placeTps();
+    if (isMobile()) document.documentElement.classList.add('lock');
+    requestAnimationFrame(() => { const on = $('.tps-list .on', tpsPop); on && on.scrollIntoView({ block: 'center' }); (many && !isMobile() ? $('.tps-search input', tpsPop) : $('.tps-list', tpsPop)).focus({ preventScroll: true }); });
+  }
+  function closeTps(instant) {
+    if (!tpsCur) return;
+    const sel = tpsCur; tpsCur = null;
+    sel._tps.btn.setAttribute('aria-expanded', 'false'); sel._tps.btn.classList.remove('open');
+    if (!detailOpen && $('#msearch').hidden) document.documentElement.classList.remove('lock');
+    if (instant || reduced) { tpsPop.hidden = true; return; }
+    tpsPop.classList.add('out');
+    setTimeout(() => { if (!tpsCur) tpsPop.hidden = true; tpsPop.classList.remove('out'); }, 180);
+    sel._tps.btn.focus({ preventScroll: true });
+  }
+  function pickTps(i) {
+    const sel = tpsCur; if (!sel) return;
+    const changed = sel.selectedIndex !== i;
+    sel.selectedIndex = i; sel._tps.update();
+    closeTps();
+    if (changed) sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  tpsPop.addEventListener('click', e => {
+    if (e.target.closest('[data-tps-close]')) return closeTps();
+    const li = e.target.closest('li[data-i]'); if (li) pickTps(+li.dataset.i);
+  });
+  $('.tps-search input', tpsPop).addEventListener('input', e => renderTpsList(e.target.value));
+  tpsPop.addEventListener('keydown', e => {
+    const lis = $$('.tps-list li[data-i]', tpsPop);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeTps(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); tpsIdx = Math.max(0, Math.min(lis.length - 1, tpsIdx + (e.key === 'ArrowDown' ? 1 : -1))); lis.forEach((l, k) => l.classList.toggle('hl', k === tpsIdx)); lis[tpsIdx]?.scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); const l = lis[tpsIdx] || lis[0]; l && pickTps(+l.dataset.i); }
+  });
+  document.addEventListener('pointerdown', e => { if (tpsCur && !e.target.closest('.tps-card') && !e.target.closest('.tps-btn')) closeTps(); });
+  addEventListener('resize', () => tpsCur && placeTps());
+  addEventListener('scroll', e => { if (tpsCur && !isMobile() && !(e.target instanceof Element && e.target.closest?.('.tps-list'))) closeTps(true); }, true);
+
   // ---------- 광고 (AdSense / 개발 중 자리표시) ----------
   const adIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track('ad_impression', { slot: e.target.dataset.slot }); adIO.unobserve(e.target); } }), { threshold: .5 });
   function adAfter(i) {
@@ -708,6 +797,9 @@
     }
     if (!META.ages.some(a => a.code === state.age)) state.age = 'all';
     renderAges(); renderSources(); renderCats();
+    enhanceSelect($('#searchCat'), { title: '카테고리 선택' });
+    enhanceSelect($('#searchBrand'), { title: '회사(브랜드) 선택', searchable: true });
+    enhanceSelect($('#sortSel'), { title: '정렬' });
     $('#searchInput').value = state.q; $('#searchClear').hidden = !state.q;
     await loadBrands();
     renderActiveFilters();

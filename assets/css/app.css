@@ -143,11 +143,11 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 
 /* ---------- 카테고리 슬라이드 ---------- */
 .cat-viewport { max-width: 1280px; margin: 0 auto; overflow: hidden; }
-.cat-viewport.anim { transition: height .42s var(--ease); }
+
 .cat-track { display: flex; align-items: flex-start; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .cat-track::-webkit-scrollbar { display: none; }
-.cat-panel { flex: 0 0 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: normal; padding: 18px 20px 40px; min-height: 60vh; transition: opacity .4s var(--ease), transform .5s var(--ease); }
-.cat-panel:not(.active) { opacity: .35; transform: scale(.985); }
+.cat-panel { flex: 0 0 100%; width: 100%; scroll-snap-align: start; scroll-snap-stop: normal; padding: 18px 20px 40px; min-height: 60vh; transition: opacity .3s var(--ease); }
+.cat-panel:not(.active) { opacity: .35; }
 .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 2px 0 14px; }
 .panel-head h2 { margin: 0; font-size: 21px; letter-spacing: -.03em; }
 .panel-head h2 small { font-size: 14px; color: var(--ink3); font-weight: 600; margin-left: 6px; }
@@ -155,7 +155,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 18px 16px; }
 
 /* ---------- 카드 ---------- */
-.card { position: relative; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); transition: transform .35s var(--spring), box-shadow .35s; animation: cardIn .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); contain: layout; }
+.card { position: relative; border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); transition: transform .35s var(--spring), box-shadow .35s; animation: cardIn .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); contain: layout paint style; content-visibility: auto; contain-intrinsic-size: auto 340px; }
 @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 .card:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(15,18,34,.04), 0 18px 40px rgba(15,18,34,.12); }
 .card-hit { display: block; width: 100%; text-align: left; border-radius: var(--r); }
@@ -201,7 +201,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 html { scrollbar-gutter: stable; }
 html.lock, html.lock body { overflow: hidden; }
 .detail { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 32px 24px; }
-.detail-backdrop { position: absolute; inset: 0; background: rgba(8,10,18,.58); animation: fadeIn .32s var(--ease) both; }
+.detail-backdrop { position: absolute; inset: 0; background: rgba(8,10,18,.58); animation: fadeIn .28s var(--ease) both; will-change: opacity; }
 .detail.closing .detail-backdrop { animation: fadeOut .26s var(--ease) forwards; }
 @keyframes fadeIn { from { opacity: 0; } } @keyframes fadeOut { to { opacity: 0; } }
 .detail-sheet { position: relative; width: min(1080px, 100%); max-height: calc(100vh - 64px); max-height: calc(100dvh - 64px); display: flex; flex-direction: column; background: var(--bg2); border-radius: 28px; box-shadow: var(--shadow-lg); outline: 0; overflow: hidden; transition: transform .28s var(--ease); will-change: transform; }

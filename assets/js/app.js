@@ -176,7 +176,6 @@
     $('#catPrev').disabled = idx === 0; $('#catNext').disabled = idx === CATS.length - 1;
     if ($('#searchCat').value !== c.slug) { $('#searchCat').value = c.slug; loadBrands(); }
     const vp = $('#catViewport');
-    if (animate) { vp.classList.add('anim'); clearTimeout(vp._t); vp._t = setTimeout(() => vp.classList.remove('anim'), 520); }
     ensurePanel(c.slug);
     // 이웃 패널 미리 로드 → 스와이프 시 바로 보임
     [idx - 1, idx + 1].forEach(i => CATS[i] && setTimeout(() => ensurePanel(CATS[i].slug), 400));
@@ -587,20 +586,15 @@
       setVT($('.d-img', sheet), 'pd-img');
     };
     const vis = thumb && (() => { const r = thumb.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })();
-    if (document.startViewTransition && vis && !reduced) {
-      setVT(thumb, 'pd-img');
-      document.documentElement.classList.add('vt-open');
-      const vt = document.startViewTransition(show);
-      vt.finished.finally(() => { document.documentElement.classList.remove('vt-open'); setVT($('.d-img', sheet)); sheet.focus({ preventScroll: true }); });
-    } else {
+    {
       const r1 = vis ? thumb.getBoundingClientRect() : null;
       show(); setVT($('.d-img', sheet));
       if (!reduced) {
-        sheet.animate([{ opacity: 0, transform: 'translateY(18px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        sheet.animate([{ opacity: 0, transform: isMobile() ? 'translateY(60px)' : 'translateY(18px) scale(.985)' }, { opacity: 1, transform: 'none' }], { duration: isMobile() ? 300 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
         const img = $('.d-img', sheet);
         if (r1) { // FLIP: 이미지만 카드 위치에서 확대
           const r2 = img.getBoundingClientRect();
-          img.animate([{ transformOrigin: 'top left', transform: 'translate(' + (r1.left - r2.left) + 'px,' + (r1.top - r2.top) + 'px) scale(' + (r1.width / r2.width) + ')' }, { transformOrigin: 'top left', transform: 'none' }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' });
+          if (r2.width) img.animate([{ transformOrigin: 'top left', transform: 'translate(' + (r1.left - r2.left) + 'px,' + (r1.top - r2.top) + 'px) scale(' + (r1.width / r2.width) + ')' }, { transformOrigin: 'top left', transform: 'none' }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
         }
       }
       sheet.focus({ preventScroll: true });
@@ -621,14 +615,9 @@
       else if (!fromPop) history.replaceState(null, '', listUrl());
     } catch { /* file:// 등 */ }
     document.title = META.site.name + ' - ' + META.site.tagline;
-    if (document.startViewTransition && visible && !reduced && $('#detailScroll').scrollTop < 400) {
-      setVT($('.d-img', sheet), 'pd-img');
-      document.documentElement.classList.add('vt-close');
-      const vt = document.startViewTransition(() => { hide(); setVT(thumb, 'pd-img'); });
-      vt.finished.finally(() => { document.documentElement.classList.remove('vt-close'); setVT(thumb); card.querySelector('.card-hit')?.focus({ preventScroll: true }); });
-    } else if (!reduced) {
+    if (!reduced) {
       detail.classList.add('closing');
-      sheet.animate([{ opacity: 1, transform: sheet.style.transform || 'none' }, { opacity: 0, transform: isMobile() ? 'translateY(40%)' : 'translateY(14px) scale(.985)' }], { duration: 240, easing: 'cubic-bezier(.4,0,1,1)' }).finished.then(hide);
+      sheet.animate([{ opacity: 1, transform: sheet.style.transform || 'none' }, { opacity: 0, transform: isMobile() ? 'translateY(40%)' : 'translateY(14px) scale(.985)' }], { duration: 220, easing: 'cubic-bezier(.4,0,1,1)' }).finished.then(() => { hide(); if (visible) card.querySelector('.card-hit')?.focus({ preventScroll: true }); });
     } else hide();
   }
   $('#detail').addEventListener('click', e => {

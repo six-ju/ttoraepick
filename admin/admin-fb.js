@@ -5,7 +5,7 @@
    - admin.js 의 API 호출(/api/admin/*)을 이 파일이 브라우저 안에서 처리 */
 (() => {
   'use strict';
-  const C = window.TP_FB, OWNER = window.TP_OWNER, META = window.TP_ADMIN_META || {}, DATA = window.TP_DATA || { products: [], meta: { sources: [], categories: [] }, keywords: { rows: [] } };
+  const C = window.TP_FB, OWNER_H = window.TP_OWNER_H, META = window.TP_ADMIN_META || {}, DATA = window.TP_DATA || { products: [], meta: { sources: [], categories: [] }, keywords: { rows: [] } };
   const V = '10.12.2';
   let FB = null;
   const fb = () => FB || (FB = (async () => {
@@ -20,7 +20,9 @@
     const user = await new Promise(res => { const un = authM.onAuthStateChanged(auth, u => { un(); res(u); }); });
     return { app, auth, authM, db, fl, user };
   })());
-  const isOwner = u => u && u.email && u.email.toLowerCase() === String(OWNER).toLowerCase() && u.emailVerified;
+  // 사장님 이메일은 코드에 적지 않고 SHA-256 해시로만 비교 (실제 권한 검사는 Firestore 보안 규칙이 서버에서 수행)
+  const sha = async s => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const isOwner = async u => !!(u && u.email && u.emailVerified && (await sha(u.email.trim().toLowerCase())) === OWNER_H);
 
   // ---------- 로그인 화면: 구글 버튼 ----------
   function setupLogin() {
@@ -37,7 +39,7 @@
       try {
         const { auth, authM } = await fb();
         const cred = await authM.signInWithPopup(auth, new authM.GoogleAuthProvider());
-        if (!isOwner(cred.user)) { await authM.signOut(auth); err.textContent = '허용되지 않은 계정이에요 (' + (cred.user.email || '') + ')'; return; }
+        if (!(await isOwner(cred.user))) { await authM.signOut(auth); err.textContent = '허용되지 않은 계정이에요 (' + (cred.user.email || '') + ')'; return; }
         localStorage.setItem('tp_owner', '1'); // 사장님 본인 방문은 통계에서 제외
         location.reload();
       } catch (e) { err.textContent = '로그인 실패: ' + (e.code || e.message); }
@@ -138,7 +140,7 @@
     __fb: true,
     '/api/admin/me': async () => {
       const { user } = await fb();
-      if (!isOwner(user)) throw new Error('로그인 필요');
+      if (!(await isOwner(user))) throw new Error('로그인 필요');
       localStorage.setItem('tp_owner', '1');
       return { id: 1, email: user.email, name: user.displayName || '대표', role: 'owner', roleLabel: '대표(오너) · 구글 로그인', perms: ['*'] };
     },

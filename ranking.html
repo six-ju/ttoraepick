@@ -1,0 +1,75 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>순위 산정 방법 - 또래픽은 어떻게 상품을 고르나요? | 또래픽</title><meta name="description" content="또래픽 순위가 어떤 데이터로, 어떤 점수 계산으로 만들어지는지 공개합니다. 수집 출처, 점수 배점, 업데이트 주기, 가격 비교 기준을 확인하세요."><meta property="og:title" content="또래픽 순위 산정 방법"><meta property="og:description" content="또래픽 순위가 어떤 데이터로, 어떤 점수 계산으로 만들어지는지 공개합니다. 수집 출처, 점수 배점, 업데이트 주기, 가격 비교 기준을 확인하세요."><meta property="og:image" content="assets/og.png">
+<link rel="icon" href="assets/favicon.svg"><meta name="google-adsense-account" content="ca-pub-3746750038855279"><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3746750038855279" crossorigin="anonymous"></script><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{--ink:#14172a;--ink2:#4a5068;--ink3:#8a90a6;--line:#e7e9f1;--chip:#f1f2f7;--brand:#ff4a5c;--grad:linear-gradient(135deg,#ff7a3d,#ff3d6e 60%,#e0338f)}
+*{box-sizing:border-box}body{margin:0;font-family:"Pretendard Variable",sans-serif;color:var(--ink);background:#f7f8fb;word-break:keep-all;line-height:1.7}
+a{color:inherit}.top{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.top div{max-width:960px;margin:0 auto;padding:12px 20px;display:flex;gap:18px;align-items:center}.top b{font-size:19px;letter-spacing:-.03em}.top a{text-decoration:none;font-weight:600;color:var(--ink2);font-size:14px}.top a.logo{display:flex;align-items:center;gap:8px;color:var(--ink)}.top img{width:28px;height:28px;border-radius:8px}
+.disc{margin:0;text-align:center;font-size:12px;color:var(--ink2);padding:6px;background:#eef0f5}
+main{max-width:960px;margin:0 auto;padding:30px 20px 60px}h1{font-size:clamp(26px,4vw,36px);letter-spacing:-.04em;line-height:1.3;margin:6px 0 10px}
+.meta{color:var(--ink3);font-size:13px}.note{background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 24px;margin:22px 0}.note p{margin:0 0 10px}.note b{color:var(--brand)}
+.ages{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.ages a{padding:8px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);text-decoration:none;font-weight:700;font-size:14px}.ages a.on{background:var(--grad);color:#fff;border:0}
+h2{font-size:21px;margin:34px 0 12px;letter-spacing:-.03em}.kw{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.kw span{padding:5px 10px;border-radius:8px;background:var(--chip);font-size:13px;font-weight:600}.kw span b{color:var(--brand);margin-right:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.p{background:#fff;border-radius:14px;overflow:hidden;text-decoration:none;border:1px solid var(--line);transition:transform .2s}.p:hover{transform:translateY(-3px)}
+.p img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--chip);display:block}.p div{padding:9px 10px 11px;font-size:13px}.p small{color:var(--ink3);display:block}.p strong{display:block;margin-top:4px}
+.p .t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;height:2.8em}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}.card{display:block;background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;text-decoration:none}.card h3{margin:0 0 6px;font-size:18px}.card p{margin:0;color:var(--ink2);font-size:14px}
+footer{max-width:960px;margin:0 auto;padding:20px;color:var(--ink3);font-size:12px;border-top:1px solid var(--line)}footer a{margin-right:12px}
+.tbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:14px}.tbl th,.tbl td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}.tbl th{background:var(--chip);font-size:13px}.tbl td.n{white-space:nowrap;font-weight:800;color:var(--brand)}.scroll{overflow-x:auto}
+.bar{display:flex;height:16px;border-radius:999px;overflow:hidden;margin:10px 0 6px}.bar span{display:block}.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink2)}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.stat{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:12px}.stat div{background:var(--chip);border-radius:12px;padding:10px 12px;font-size:13px}.stat b{display:block;font-size:20px;color:var(--ink)}
+ol.steps{padding-left:20px;margin:0}ol.steps li{margin:0 0 8px}
+</style><body><header class="top"><div><a class="logo" href="index.html"><img src="assets/icon192.png" alt=""><b>또래픽</b></a><a href="index.html">연령별 인기상품</a><a href="best/index.html">랭킹</a><a href="trends/index.html">트렌드 리포트</a><a href="ranking.html">순위 기준</a></div></header><p class="disc">이 사이트는 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p><main>
+<h1>또래픽 순위는 이렇게 만들어져요</h1>
+<p class="meta">어떤 데이터를 모아서, 어떤 점수로 줄을 세우는지 그대로 공개합니다. 순위는 광고비나 제휴 수수료로 바뀌지 않아요.</p>
+
+<section class="note"><p><b>한 줄 요약</b>: 하루 두 번(오전 7시, 오후 6시) 각 쇼핑몰이 공개한 <b>판매·조회 순위</b>와 네이버 데이터랩의 <b>연령별 인기 검색어</b>를 새로 모으고, 순위·리뷰·별점·할인율·최신성을 점수로 합쳐서 높은 순서대로 보여드려요.</p>
+<p style="margin:14px 0 0"><b>지금 데이터 현황</b> · 마지막 업데이트 2026-11-01 11:04 (한국 시간)</p><div class="stat"><div>쿠팡<b>167개</b></div><div>네이버쇼핑<b>987개</b></div><div>다이소몰<b>523개</b></div><div>무신사<b>2,257개</b></div><div>올리브영<b>635개</b></div><div>전체<b>4,569개</b></div></div></section>
+
+<h2>1. 어디서 데이터를 가져오나요?</h2>
+<div class="scroll"><table class="tbl"><thead><tr><th>출처</th><th>가져오는 순위</th><th>연령 구분</th><th>카드 표시</th></tr></thead><tbody>
+<tr><td><b>쿠팡</b></td><td>쿠팡 파트너스 공식 API: 카테고리별 베스트, 골드박스(오늘의 특가), 그리고 연령별 인기 검색어로 검색했을 때 상위에 나오는 상품</td><td>검색어를 통해 연결 (예: 20대 인기 검색어 1위로 검색한 상품 → 20대 순위)</td><td>구매 많은</td></tr>
+<tr><td><b>네이버쇼핑</b></td><td>네이버쇼핑 BEST의 연령·성별별 "많이 본 상품" (남녀 순위를 합산)</td><td>10대~50대</td><td>많이 본</td></tr>
+<tr><td><b>무신사</b></td><td>무신사 랭킹(실시간)을 연령대별·카테고리별로</td><td>10대~40대 이상</td><td>구매 많은</td></tr>
+<tr><td><b>올리브영</b></td><td>올리브영 판매 랭킹 (전체 + 카테고리)</td><td>연령 정보 없음 → 모든 연령에 함께 표시</td><td>구매 많은</td></tr>
+<tr><td><b>다이소몰</b></td><td>다이소몰 주간 베스트 (카테고리별)</td><td>연령 정보 없음 → 모든 연령에 함께 표시</td><td>구매 많은</td></tr>
+<tr><td><b>네이버 데이터랩</b></td><td>쇼핑인사이트 분야별·연령별 인기 검색어 20위</td><td>10대~60대 이상</td><td>"🔥 인기 검색어", 상품의 #키워드</td></tr>
+</tbody></table></div>
+
+<h2>2. 점수는 어떻게 계산하나요?</h2>
+<section class="note"><p>상품마다 아래 여섯 가지를 더해 <b>100점 만점</b>으로 점수를 매겨요.</p>
+<div class="bar" role="img" aria-label="점수 배점: 쇼핑몰 순위 35, 방문자 반응 25, 리뷰 수 20, 별점 10, 할인율 5, 최신성 5"><span style="width:35%;background:#ff4a5c"></span><span style="width:25%;background:#ff9f43"></span><span style="width:20%;background:#3d7bff"></span><span style="width:10%;background:#22b07d"></span><span style="width:5%;background:#a55eea"></span><span style="width:5%;background:#8a90a6"></span></div>
+<div class="legend"><span><i style="background:#ff4a5c"></i>쇼핑몰 순위 35</span><span><i style="background:#ff9f43"></i>또래픽 방문자 반응 25</span><span><i style="background:#3d7bff"></i>리뷰 수 20</span><span><i style="background:#22b07d"></i>별점 10</span><span><i style="background:#a55eea"></i>할인율 5</span><span><i style="background:#8a90a6"></i>최신성 5</span></div></section>
+<div class="scroll"><table class="tbl"><thead><tr><th>항목</th><th>배점</th><th>계산 방법</th></tr></thead><tbody>
+<tr><td>쇼핑몰 순위</td><td class="n">최대 35점</td><td>그 상품이 받은 가장 높은 순위가 1위면 30점, 순위가 내려갈수록 줄어 40위 밖이면 0점. 여러 연령대에서 동시에 순위권이면 연령대 하나당 1점씩 최대 5점 추가</td></tr>
+<tr><td>또래픽 방문자 반응</td><td class="n">최대 25점</td><td>최근 30일 동안 또래픽에서 일어난 구매처 이동(3점), 찜(2점), 상세 보기(1점)를 합쳐, 가장 반응이 많은 상품을 기준으로 비율 계산. 방문 기록이 쌓일수록 반영 폭이 커져요</td></tr>
+<tr><td>리뷰 수</td><td class="n">최대 20점</td><td>리뷰가 많을수록 높지만 로그 단위로 계산해서 리뷰가 아주 많은 상품만 독식하지 않아요 (리뷰 10만 개 이상이면 만점)</td></tr>
+<tr><td>별점</td><td class="n">최대 10점</td><td>별점 3.0 이하는 0점, 5.0이면 10점. 별점 정보가 없는 쇼핑몰 상품은 중간값 4점</td></tr>
+<tr><td>할인율</td><td class="n">최대 5점</td><td>할인율 50% 이상이면 만점, 그보다 낮으면 비율대로</td></tr>
+<tr><td>최신성</td><td class="n">최대 5점</td><td>이번 업데이트에서 순위에 잡혔으면 5점, 마지막으로 잡힌 지 14일이 지나면 0점</td></tr>
+</tbody></table></div>
+
+<h2>3. 화면에는 어떤 순서로 보이나요?</h2>
+<section class="note"><ol class="steps">
+<li><b>연령을 고르면</b> 그 연령대 순위가 있는 상품이 먼저 나와요. 카드의 "20대 3위" 같은 표시는 해당 쇼핑몰의 그 연령대 순위예요.</li>
+<li>한 쇼핑몰이 목록을 독차지하지 않도록 <b>쇼핑몰별 1위, 2위…를 번갈아</b> 보여드려요. 쇼핑몰을 하나만 고르면 그 쇼핑몰 순위대로 나와요.</li>
+<li>"인기순" 외에 낮은 가격순, 할인율순 같은 정렬을 고르면 점수 대신 그 기준으로 정렬해요.</li>
+</ol></section>
+
+<h2>4. 얼마나 자주 바뀌나요?</h2>
+<section class="note"><p>매일 <b>오전 7시</b>와 <b>오후 6시</b>(한국 시간)에 자동으로 새 순위를 가져와요.</p>
+<p>새 순위에 없는 상품은 연령 순위 표시가 바로 빠지고, <b>7일 동안 어느 순위에도 다시 잡히지 않으면 목록에서 내려가요</b>. 다시 순위에 들어오면 자동으로 돌아와요.</p>
+<p>어떤 쇼핑몰에서 데이터를 제대로 못 가져온 날에는 엉뚱한 결과를 보여주지 않도록 그 쇼핑몰은 직전 순위를 그대로 유지해요.</p></section>
+
+<h2>5. 가격 비교는 어떻게 하나요?</h2>
+<section class="note"><p>다른 쇼핑몰에 <b>같은 상품</b>이 있으면 판매처별 가격을 함께 보여주고, 가장 싼 곳을 구매 버튼에 연결해요. 같은 상품인지는 브랜드, 상품명 속 용량·개수 표기(예: 500ml, 30개입), 가격 차이(0.55~1.8배 안쪽), 상품명 유사도를 함께 따져서 판단해요. 확신이 낮으면 비교에 넣지 않아요.</p>
+<p>카드의 <b>✓ 최저가</b>는 비교한 판매처 중 가장 싸다는 뜻이고, <b>↓ 다른 쇼핑몰 가격</b>은 그곳이 더 싸다는 뜻이에요. 가격은 수집 시점 기준이라 실제 가격과 다를 수 있어요.</p></section>
+
+<h2>6. 검색하면 다른 쇼핑몰 결과도 보여요</h2>
+<section class="note"><p>검색하면 또래픽 순위 결과 아래에 <b>쇼핑몰 실시간 검색 결과</b>를 함께 보여드려요 (쿠팡, 무신사, 다이소, 올리브영).</p>
+<p>사이트 특성상 외부 쇼핑몰에 부담을 주지 않도록 <b>쇼핑몰별로 최대 4개</b>, 쇼핑몰을 하나 고르면 <b>최대 12개</b>(쿠팡은 최대 10개)까지만 보여드려요. 같은 검색어 결과는 30분(쿠팡은 6시간) 동안 저장해 두고 다시 써요. 검색이 몰리면 잠시 결과가 비어 있을 수 있고, 그럴 땐 "쇼핑몰에서 더 보기"로 바로 이동할 수 있어요. 네이버쇼핑은 실시간 검색 연동을 지원하지 않아 바로가기만 제공해요.</p></section>
+
+<h2>7. 광고와 제휴</h2>
+<section class="note"><p>쿠팡 링크는 쿠팡 파트너스 제휴 링크라 구매가 이뤄지면 또래픽이 일정 수수료를 받을 수 있어요. 구매 가격은 같아요. 하지만 <b>수수료 여부는 점수에 들어가지 않아요</b>. Google 애드센스 광고는 "광고"로 구분돼 표시돼요. 자세한 내용은 <a href="policy/affiliate.html">제휴·광고 고지</a>를 확인해 주세요.</p></section>
+</main><footer>© 2026 또래픽 · <a href="about.html">소개</a><a href="ranking.html">순위 산정 방법</a><a href="contact.html">문의</a><a href="policy/privacy.html">개인정보처리방침</a><a href="policy/terms.html">이용약관</a><a href="policy/affiliate.html">제휴·광고 고지</a></footer></body></html>

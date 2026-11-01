@@ -10,7 +10,7 @@
   const isMobile = () => matchMedia('(max-width: 860px)').matches;
   // 정적 빌드(GitHub Pages/파일) 여부: 서버 없이 static-api.js 가 /api 를 대신 처리
   const STATIC = !!window.TP_STATIC;
-  const ROOT = (() => { try { return new URL('./', document.baseURI).pathname; } catch { return '/'; } })();
+  const ROOT = (() => { if (location.protocol === 'file:') return location.pathname; try { return new URL('./', document.baseURI).pathname; } catch { return '/'; } })();
   const detailUrl = id => STATIC ? ROOT + '?p=' + id : '/p/' + id;
   const shareUrl = id => location.origin + (STATIC ? ROOT + '?p=' + id : '/p/' + id);
   const detailIdFromUrl = () => STATIC ? +(new URLSearchParams(location.search).get('p') || 0) : +((location.pathname.match(/^\/p\/(\d+)/) || [])[1] || 0);
@@ -247,18 +247,50 @@
         bindImgs(grid);
       }
       $('.more', p.el)?.remove();
-      if (p.offset < p.total) p.el.insertAdjacentHTML('beforeend', `<button class="more" data-more="${slug}">더 보기 <small>(${num(p.offset)} / ${num(p.total)})</small></button>`);
+      const moreHtml = `<button class="more" data-more="${slug}">더 보기 <small>(${num(p.offset)} / ${num(p.total)})</small></button>`;
+      if (p.offset < p.total) { const g2 = $('.grid', p.el); g2 ? g2.insertAdjacentHTML('afterend', moreHtml) : p.el.insertAdjacentHTML('beforeend', moreHtml); }
       if (state.q && reset && slug === state.cat) track('search', { query: state.q, resultCount: d.total, category: slug === 'all' ? null : slug });
+      if (state.q && reset) liveSearch(p, slug);
     } catch (e) {
       if (my !== p.req) return;
       p.el.innerHTML = panelHead(slug, 0) + `<div class="empty"><b>⚠️</b>목록을 불러오지 못했어요. <button class="more" data-retry="${slug}">다시 시도</button></div>`;
       p.key = null;
     } finally { p.loading = false; if (slug === state.cat) fitHeight(); }
   }
+  // ---------- 쇼핑몰 실시간 검색 (Cloudflare Worker) ----------
+  // 사이트 특성상 쇼핑몰별 최대 4개(쇼핑몰을 고르면 12개)만 보여줌 → 외부 쇼핑몰 부하·과도한 호출 방지
+  const LIVE_API = window.TP_SEARCH || '';
+  const LIVE_NAME = { coupang: '쿠팡', naver: '네이버쇼핑', daiso: '다이소', musinsa: '무신사', oliveyoung: '올리브영' };
+  const liveCache = new Map();
+  async function liveSearch(p, slug) {
+    if (!LIVE_API || !state.q) return;
+    const qtext = state.q, src = state.source === 'all' ? 'all' : state.source, key = src + '|' + qtext;
+    $('.live', p.el)?.remove();
+    p.el.insertAdjacentHTML('beforeend', `<section class="live" aria-live="polite"><div class="live-head"><h3>🔎 쇼핑몰 실시간 검색 <small>“${esc(qtext)}”</small></h3><p class="live-note">사이트 특성상 쇼핑몰별로 최대 ${src === 'all' ? 4 : 12}개만 보여드려요${src === 'all' ? ' (쇼핑몰을 고르면 12개)' : ''}. 가격·재고는 각 쇼핑몰 기준이라 바뀔 수 있어요.</p></div><div class="live-body"><div class="live-loading">${skeletons(4)}</div></div></section>`);
+    if (slug === state.cat) fitHeight();
+    let d = liveCache.get(key);
+    try {
+      if (!d) { const r = await fetch(LIVE_API + '/search?q=' + encodeURIComponent(qtext) + '&store=' + src); if (!r.ok) throw new Error(r.status); d = await r.json(); liveCache.set(key, d); }
+    } catch { d = null; }
+    const box = $('.live .live-body', p.el);
+    if (!box || state.q !== qtext) return;
+    if (!d) { box.innerHTML = '<p class="live-msg">실시간 검색을 잠시 쓸 수 없어요. 위 또래픽 순위 결과를 먼저 확인해 주세요.</p>'; if (slug === state.cat) fitHeight(); return; }
+    const order = ['coupang', 'naver', 'oliveyoung', 'musinsa', 'daiso'].filter(s => d.stores[s]);
+    let hasCoupang = false;
+    box.innerHTML = order.map(s => {
+      const r = d.stores[s], items = r.items || [];
+      if (s === 'coupang' && items.length) hasCoupang = true;
+      const more = `<a class="live-more" href="${esc(r.more)}" target="_blank" rel="noopener nofollow" data-live-src="${s}">${LIVE_NAME[s]}에서 더 보기 →</a>`;
+      const msg = items.length ? '' : r.note === 'link' ? '실시간 검색을 지원하지 않는 쇼핑몰이라 바로가기로 연결해요.' : r.error === 'busy' ? '지금은 검색이 몰려서 잠시 후에 다시 보여드려요.' : r.error ? '지금은 결과를 가져오지 못했어요.' : '검색 결과가 없어요.';
+      return `<div class="live-store"><div class="live-store-head"><b class="src-badge ${s}">${LIVE_NAME[s]}</b><span>${items.length ? items.length + '개' : ''}</span>${more}</div>${msg ? `<p class="live-msg">${msg}</p>` : `<div class="live-row">${items.map(it => `<a class="live-card" href="${esc(it.url)}" target="_blank" rel="noopener nofollow${it.affiliate ? ' sponsored' : ''}" data-live-src="${s}"><span class="lc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span><span class="lc-brand">${esc(it.brand || LIVE_NAME[s])}</span><span class="lc-title">${esc(it.title)}</span><span class="lc-price">${it.discountRate ? `<em>${it.discountRate}%</em>` : ''}<b>${won(it.price)}</b></span>${it.rating ? `<span class="lc-meta">★ ${Number(it.rating).toFixed(1)}${it.reviews ? ' · 리뷰 ' + num(it.reviews) : ''}</span>` : ''}</a>`).join('')}</div>`}</div>`;
+    }).join('') + (hasCoupang ? '<p class="live-disc">쿠팡 결과는 쿠팡 파트너스 활동의 일환으로, 구매 시 이에 따른 일정액의 수수료를 제공받습니다.</p>' : '');
+    if (slug === state.cat) fitHeight();
+  }
+  document.addEventListener('click', e => { const a = e.target.closest('[data-live-src]'); if (a) { track('click', { source: a.dataset.liveSrc, query: state.q, slot: a.classList.contains('live-more') ? 'live_more' : 'live' }); flush(); } });
   function panelHead(slug, total) {
     const c = CATS.find(x => x.slug === slug);
     const ageLabel = state.age === 'all' ? '전체 연령' : META.ages.find(a => a.code === state.age)?.label;
-    return `<div class="panel-head"><h2>${c.icon} ${esc(c.name)}${total !== null ? `<small>${num(total)}개</small>` : ''}</h2><span class="src-note">${esc(ageLabel)} 기준 · 판매처 순위 + 또래픽 반응 점수</span></div>`;
+    return `<div class="panel-head"><h2>${c.icon} ${esc(c.name)}${total !== null ? `<small>${num(total)}개</small>` : ''}</h2><span class="src-note">${esc(ageLabel)} 기준 · 판매처 순위 + 또래픽 반응 점수 · <a href="${STATIC ? ROOT : '/'}ranking.html">순위 기준</a></span></div>`;
   }
   const skeletons = n => Array.from({ length: n }, () => '<div class="skel"><div class="s-img"></div><div class="s-line"></div><div class="s-line w60"></div></div>').join('');
   const emptyHtml = () => `<div class="empty"><b>🔍</b>조건에 맞는 상품이 없어요.<br>검색어나 필터를 바꿔 보세요.${state.q || state.brand || state.source !== 'all' ? '<br><button class="more" data-reset>필터 초기화</button>' : ''}</div>`;

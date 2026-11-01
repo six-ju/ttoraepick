@@ -262,28 +262,36 @@
   const LIVE_API = window.TP_SEARCH || '';
   const LIVE_NAME = { coupang: '쿠팡', naver: '네이버쇼핑', daiso: '다이소', musinsa: '무신사', oliveyoung: '올리브영' };
   const liveCache = new Map();
+  // 검색어의 분야 추정 (또래픽 인기 검색어·상품 데이터 기준) → 식품 검색엔 패션몰(무신사) 결과 제외
+  function guessCat(qtext) {
+    const D = window.TP_DATA; if (!D) return null;
+    const cnt = {};
+    for (const r of D.keywords?.rows || []) if (r.keyword === qtext || r.keyword.includes(qtext)) cnt[r.category] = (cnt[r.category] || 0) + 3;
+    for (const x of D.products || []) if ((x.title || '').includes(qtext)) cnt[x.category] = (cnt[x.category] || 0) + 1;
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : null;
+  }
   async function liveSearch(p, slug) {
     if (!LIVE_API || !state.q) return;
     const qtext = state.q, src = state.source === 'all' ? 'all' : state.source, key = src + '|' + qtext;
     $('.live', p.el)?.remove();
-    p.el.insertAdjacentHTML('beforeend', `<section class="live" aria-live="polite"><div class="live-head"><h3>🔎 쇼핑몰 실시간 검색 <small>“${esc(qtext)}”</small></h3><p class="live-note">사이트 특성상 쇼핑몰별로 최대 ${src === 'all' ? 4 : 12}개만 보여드려요${src === 'all' ? ' (쇼핑몰을 고르면 12개)' : ''}. 가격·재고는 각 쇼핑몰 기준이라 바뀔 수 있어요.</p></div><div class="live-body"><div class="live-loading">${skeletons(4)}</div></div></section>`);
-    if (slug === state.cat) fitHeight();
     let d = liveCache.get(key);
     try {
       if (!d) { const r = await fetch(LIVE_API + '/search?q=' + encodeURIComponent(qtext) + '&store=' + src); if (!r.ok) throw new Error(r.status); d = await r.json(); liveCache.set(key, d); }
-    } catch { d = null; }
-    const box = $('.live .live-body', p.el);
-    if (!box || state.q !== qtext) return;
-    if (!d) { box.innerHTML = '<p class="live-msg">실시간 검색을 잠시 쓸 수 없어요. 위 또래픽 순위 결과를 먼저 확인해 주세요.</p>'; if (slug === state.cat) fitHeight(); return; }
-    const order = ['coupang', 'naver', 'oliveyoung', 'musinsa', 'daiso'].filter(s => d.stores[s]);
+    } catch { return; } // 실패하면 아무것도 표시하지 않음
+    if (state.q !== qtext || !p.el.isConnected) return;
+    const skip = guessCat(qtext) === 'food' ? ['musinsa'] : [];
+    const order = ['coupang', 'musinsa', 'daiso', 'oliveyoung', 'naver'].filter(s => d.stores[s] && (d.stores[s].items || []).length && !skip.includes(s));
+    if (!order.length) return; // 제대로 된 결과가 없으면 영역 자체를 숨김
+    // 화면 표시 개수: 전체 검색은 합계 최대 12개(쇼핑몰별 최대 6개), 쇼핑몰 선택은 최대 20개
+    const per = src === 'all' ? Math.min(6, Math.max(3, Math.floor(12 / order.length))) : 20;
     let hasCoupang = false;
-    box.innerHTML = order.map(s => {
-      const r = d.stores[s], items = r.items || [];
-      if (s === 'coupang' && items.length) hasCoupang = true;
-      const more = `<a class="live-more" href="${esc(r.more)}" target="_blank" rel="noopener nofollow" data-live-src="${s}">${LIVE_NAME[s]}에서 더 보기 →</a>`;
-      const msg = items.length ? '' : r.note === 'link' ? '실시간 검색을 지원하지 않는 쇼핑몰이라 바로가기로 연결해요.' : r.error === 'busy' ? '지금은 검색이 많아 잠시 쉬는 중이에요. 오른쪽 "더 보기"로 바로 확인할 수 있어요.' : r.error ? '지금은 결과를 가져오지 못했어요.' : '검색 결과가 없어요.';
-      return `<div class="live-store"><div class="live-store-head"><b class="src-badge ${s}">${LIVE_NAME[s]}</b><span>${items.length ? items.length + '개' : ''}</span>${more}</div>${msg ? `<p class="live-msg">${msg}</p>` : `<div class="live-row">${items.map(it => `<a class="live-card" href="${esc(it.url)}" target="_blank" rel="noopener nofollow${it.affiliate ? ' sponsored' : ''}" data-live-src="${s}"><span class="lc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span><span class="lc-brand">${esc(it.brand || LIVE_NAME[s])}</span><span class="lc-title">${esc(it.title)}</span><span class="lc-price">${it.discountRate ? `<em>${it.discountRate}%</em>` : ''}<b>${won(it.price)}</b></span>${it.rating ? `<span class="lc-meta">★ ${Number(it.rating).toFixed(1)}${it.reviews ? ' · 리뷰 ' + num(it.reviews) : ''}</span>` : ''}</a>`).join('')}</div>`}</div>`;
-    }).join('') + (hasCoupang ? '<p class="live-disc">쿠팡 결과는 쿠팡 파트너스 활동의 일환으로, 구매 시 이에 따른 일정액의 수수료를 제공받습니다.</p>' : '');
+    const body = order.map(s => {
+      const r = d.stores[s], items = r.items.slice(0, per);
+      if (s === 'coupang') hasCoupang = true;
+      return `<div class="live-store"><div class="live-store-head"><b class="src-badge ${s}">${LIVE_NAME[s]}</b><span>${items.length}개</span><a class="live-more" href="${esc(r.more)}" target="_blank" rel="noopener nofollow${s === 'coupang' ? ' sponsored' : ''}" data-live-src="${s}">${LIVE_NAME[s]}에서 더 보기 →</a></div><div class="live-row">${items.map(it => `<a class="live-card" href="${esc(it.url)}" target="_blank" rel="noopener nofollow${it.affiliate ? ' sponsored' : ''}" data-live-src="${s}"><span class="lc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span><span class="lc-brand">${esc(it.brand || LIVE_NAME[s])}</span><span class="lc-title">${esc(it.title)}</span><span class="lc-price">${it.discountRate ? `<em>${it.discountRate}%</em>` : ''}<b>${won(it.price)}</b></span>${it.rating ? `<span class="lc-meta">★ ${Number(it.rating).toFixed(1)}${it.reviews ? ' · 리뷰 ' + num(it.reviews) : ''}</span>` : ''}</a>`).join('')}</div></div>`;
+    }).join('');
+    p.el.insertAdjacentHTML('beforeend', `<section class="live"><div class="live-head"><h3>🔎 쇼핑몰에서 바로 찾은 “${esc(qtext)}”</h3><p class="live-note">사이트 특성상 ${src === 'all' ? '쇼핑몰별 최대 6개, 합계 12개' : '최대 20개'}까지만 보여드려요. 가격·재고는 각 쇼핑몰 기준이라 바뀔 수 있어요.</p></div><div class="live-body">${body}${hasCoupang ? '<p class="live-disc">쿠팡 결과는 쿠팡 파트너스 활동의 일환으로, 구매 시 이에 따른 일정액의 수수료를 제공받습니다.</p>' : ''}</div></section>`);
     if (slug === state.cat) fitHeight();
   }
   document.addEventListener('click', e => { const a = e.target.closest('[data-live-src]'); if (a) { track('click', { source: a.dataset.liveSrc, query: state.q, slot: a.classList.contains('live-more') ? 'live_more' : 'live' }); flush(); } });

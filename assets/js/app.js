@@ -281,7 +281,7 @@
       const r = d.stores[s], items = r.items || [];
       if (s === 'coupang' && items.length) hasCoupang = true;
       const more = `<a class="live-more" href="${esc(r.more)}" target="_blank" rel="noopener nofollow" data-live-src="${s}">${LIVE_NAME[s]}에서 더 보기 →</a>`;
-      const msg = items.length ? '' : r.note === 'link' ? '실시간 검색을 지원하지 않는 쇼핑몰이라 바로가기로 연결해요.' : r.error === 'busy' ? '지금은 검색이 몰려서 잠시 후에 다시 보여드려요.' : r.error ? '지금은 결과를 가져오지 못했어요.' : '검색 결과가 없어요.';
+      const msg = items.length ? '' : r.note === 'link' ? '실시간 검색을 지원하지 않는 쇼핑몰이라 바로가기로 연결해요.' : r.error === 'busy' ? '지금은 검색이 많아 잠시 쉬는 중이에요. 오른쪽 "더 보기"로 바로 확인할 수 있어요.' : r.error ? '지금은 결과를 가져오지 못했어요.' : '검색 결과가 없어요.';
       return `<div class="live-store"><div class="live-store-head"><b class="src-badge ${s}">${LIVE_NAME[s]}</b><span>${items.length ? items.length + '개' : ''}</span>${more}</div>${msg ? `<p class="live-msg">${msg}</p>` : `<div class="live-row">${items.map(it => `<a class="live-card" href="${esc(it.url)}" target="_blank" rel="noopener nofollow${it.affiliate ? ' sponsored' : ''}" data-live-src="${s}"><span class="lc-img">${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span><span class="lc-brand">${esc(it.brand || LIVE_NAME[s])}</span><span class="lc-title">${esc(it.title)}</span><span class="lc-price">${it.discountRate ? `<em>${it.discountRate}%</em>` : ''}<b>${won(it.price)}</b></span>${it.rating ? `<span class="lc-meta">★ ${Number(it.rating).toFixed(1)}${it.reviews ? ' · 리뷰 ' + num(it.reviews) : ''}</span>` : ''}</a>`).join('')}</div>`}</div>`;
     }).join('') + (hasCoupang ? '<p class="live-disc">쿠팡 결과는 쿠팡 파트너스 활동의 일환으로, 구매 시 이에 따른 일정액의 수수료를 제공받습니다.</p>' : '');
     if (slug === state.cat) fitHeight();

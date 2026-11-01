@@ -36,7 +36,11 @@
   // ---------- 분석 이벤트 (배치 전송) ----------
   const sid = sessionStorage.getItem('tp_sid') || (() => { const s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('tp_sid', s); return s; })();
   let evq = [];
-  const track = (type, data = {}) => { evq.push({ type, sid, age: state.age === 'all' ? null : state.age, ...data }); if (evq.length >= 10) flush(); };
+  const GA_EV = { search: 'search', view: 'view_item', click: 'go_to_store', share: 'share', wish: 'add_to_wishlist' };
+  const track = (type, data = {}) => {
+    evq.push({ type, sid, age: state.age === 'all' ? null : state.age, ...data }); if (evq.length >= 10) flush();
+    try { if (window.gtag && GA_EV[type]) window.gtag('event', GA_EV[type], { search_term: data.query, item_id: data.productId ? String(data.productId) : undefined, store: data.source, category: data.category, age_group: state.age === 'all' ? undefined : state.age, placement: data.slot, results: data.resultCount }); } catch { /* 무시 */ }
+  };
   const flush = () => {
     if (!evq.length) return;
     if (STATIC) { const batch = evq.splice(0, 30); if (window.TP_LOG) window.TP_LOG(batch); return; }

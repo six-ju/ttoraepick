@@ -207,3 +207,13 @@ pre { font-family: inherit; line-height: 1.75; background: var(--chip); padding:
 }
 
 body { word-break: keep-all; }
+
+/* 업무 보드 AI 연동 (2026-11-02) */
+.tag.ai { background: color-mix(in srgb, #7c3aed 14%, transparent); color: #7c3aed; margin-bottom: 6px; }
+.tk.airec { box-shadow: var(--shadow), inset 0 0 0 1.5px color-mix(in srgb, #7c3aed 35%, transparent); }
+.tk .ainote { background: color-mix(in srgb, #7c3aed 7%, transparent); border-radius: 8px; padding: 6px 8px; color: var(--ink2); }
+.tk .aido, .form .aido { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; font-weight: 700; color: #7c3aed; cursor: pointer; }
+.form .aido { font-size: 13px; }
+.ailog { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+.ailog p { margin: 6px 0; }
+.ailog ul { margin: 6px 0 0; padding-left: 16px; }

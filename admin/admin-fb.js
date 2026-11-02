@@ -68,6 +68,18 @@
     const snap = await fl.getDocs(fl.collection(db, 'admin', 'main', name));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
+
+  // ---------- AI(Aside) 운영 연동 (2026-11-02) ----------
+  // 사장님 구글 로그인 상태의 브라우저에서만 동작 (Firestore 보안 규칙이 owner 만 허용).
+  // await TP_AI.ready() → true 면 사용 가능. list() / add(task) / update(id, patch) / note(id, msg, state) / departments()
+  window.TP_AI = {
+    async ready() { try { const { user } = await fb(); return await isOwner(user); } catch { return false; } },
+    async list() { return await tasksList(); },
+    departments() { return (META.org?.departments || []).map(d => ({ code: d.code, name: d.name })); },
+    async add(t) { const { db, fl } = await fb(); const now = new Date().toISOString(); const r = await fl.addDoc(fl.collection(db, 'admin', 'main', 'tasks'), { title: t.title, body: t.body || '', department: t.department || '', priority: t.priority || 'normal', status: t.status || 'todo', start_date: t.start_date || '', due_date: t.due_date || '', ai_do: !!t.ai_do, ai_rec: !!t.ai_rec, ai_state: t.ai_state || '', ai_note: t.ai_note || '', ai_log: t.ai_note ? [{ at: now, msg: t.ai_note }] : [], related: t.related || [], parent_id: t.parent_id || '', triaged_at: t.triaged_at || now, created_by: t.created_by || 'ai', created_at: now }); audit('ai_task_create', r.id, t.title); return r.id; },
+    async update(id, patch) { const { db, fl } = await fb(); const upd = {}; ['title', 'body', 'department', 'status', 'priority', 'due_date', 'start_date', 'assignee_id', 'ai_do', 'ai_rec', 'ai_state', 'ai_note', 'ai_log', 'related', 'parent_id', 'triaged_at', 'created_by'].forEach(k => { if (k in patch) upd[k] = patch[k] ?? ''; }); upd.updated_at = new Date().toISOString(); await fl.updateDoc(fl.doc(db, 'admin', 'main', 'tasks', String(id)), upd); audit('ai_task_update', id, upd); return true; },
+    async note(id, msg, state) { const { db, fl } = await fb(); const ref = fl.doc(db, 'admin', 'main', 'tasks', String(id)); const cur = (await fl.getDoc(ref)).data() || {}; const now = new Date().toISOString(); const log = [...(cur.ai_log || []), { at: now, msg }].slice(-30); const upd = { ai_note: msg, ai_log: log, updated_at: now }; if (state !== undefined) upd.ai_state = state; await fl.updateDoc(ref, upd); audit('ai_task_note', id, msg); return true; },
+  };
   async function tasksList() {
     let list = await col('tasks');
     if (!list.length && (META.tasks || []).length) { // 최초 1회: 기본 런칭 업무를 Firestore 로 옮김
@@ -188,9 +200,9 @@
       const { db, fl, auth, authM } = await fb();
       const m = url.split('?')[0];
       if (m === '/api/admin/logout') { await authM.signOut(auth); localStorage.removeItem('tp_owner'); return { ok: true }; }
-      if (m === '/api/admin/tasks' && method === 'POST') { const r = await fl.addDoc(fl.collection(db, 'admin', 'main', 'tasks'), { title: body.title, body: body.body || '', department: body.department || '', priority: body.priority || 'normal', status: body.status || 'todo', due_date: body.due_date || '', created_at: new Date().toISOString() }); audit('task_create', r.id, body.title); return { ok: true, id: r.id }; }
+      if (m === '/api/admin/tasks' && method === 'POST') { const r = await fl.addDoc(fl.collection(db, 'admin', 'main', 'tasks'), { title: body.title, body: body.body || '', department: body.department || '', priority: body.priority || 'normal', status: body.status || 'todo', due_date: body.due_date || '', start_date: body.start_date || '', assignee_id: body.assignee_id ?? null, ai_do: !!body.ai_do, ai_rec: !!body.ai_rec, ai_state: body.ai_do ? 'queued' : (body.ai_state || ''), ai_note: body.ai_note || '', related: Array.isArray(body.related) ? body.related : [], parent_id: body.parent_id || '', triaged_at: body.triaged_at || '', created_by: body.created_by || 'owner', created_at: new Date().toISOString() }); audit('task_create', r.id, body.title); return { ok: true, id: r.id }; }
       let mm = m.match(/^\/api\/admin\/tasks\/([^/]+)$/);
-      if (mm && method === 'PATCH') { const upd = {}; ['title', 'body', 'department', 'status', 'priority', 'due_date'].forEach(k => { if (k in body) upd[k] = body[k] ?? ''; }); upd.updated_at = new Date().toISOString(); await fl.updateDoc(fl.doc(db, 'admin', 'main', 'tasks', mm[1]), upd); audit('task_update', mm[1], upd); return { ok: true }; }
+      if (mm && method === 'PATCH') { const upd = {}; ['title', 'body', 'department', 'status', 'priority', 'due_date', 'start_date', 'assignee_id', 'ai_do', 'ai_rec', 'ai_state', 'ai_note', 'ai_log', 'related', 'parent_id', 'triaged_at', 'created_by'].forEach(k => { if (k in body) upd[k] = body[k] ?? ''; }); upd.updated_at = new Date().toISOString(); await fl.updateDoc(fl.doc(db, 'admin', 'main', 'tasks', mm[1]), upd); audit('task_update', mm[1], upd); return { ok: true }; }
       if (mm && method === 'DELETE') { await fl.deleteDoc(fl.doc(db, 'admin', 'main', 'tasks', mm[1])); audit('task_delete', mm[1]); return { ok: true }; }
       if (m === '/api/admin/revenue' && method === 'POST') {
         const rows = Array.isArray(body.rows) ? body.rows : [body]; let n = 0;

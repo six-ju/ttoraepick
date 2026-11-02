@@ -8,7 +8,7 @@
   const won = n => '₩' + num(Math.round(n || 0));
   const pct = (a, b) => (b ? (a / b * 100) : 0).toFixed(1) + '%';
   const STATIC = window.TP_ADMIN_STATIC || null; // 정적 데모 빌드에서 주입
-  const S = { days: 30, demo: true, me: null, meta: null };
+  const S = { days: 30, demo: false, me: null, meta: null }; // 2026-11-02 사장님 지시: 데모 데이터 전부 끔
   const AGE = { 10: '10대', 20: '20대', 30: '30대', 40: '40대', 50: '50대', 60: '60대+', all: '미지정' };
   const SRC = { coupang: ['쿠팡', '#E52528'], naver: ['네이버', '#03C75A'], daiso: ['다이소', '#D6001C'], musinsa: ['무신사', '#555'], oliveyoung: ['올리브영', '#84b520'] };
   const CAT = { food: '🍙 식품', health: '🧴 생활/건강', beauty: '💄 뷰티', fashion: '👕 패션의류', acc: '👜 패션잡화', digital: '🎧 디지털/가전', living: '🛋️ 가구/인테리어', sports: '⛺ 스포츠/레저', baby: '🍼 출산/육아' };
@@ -511,15 +511,42 @@
     });
   };
 
+  // ---------- 업무 보드 (2026-11-02: AI 운영 연동) ----------
+  //  필드: title, body, department, priority, status, start_date, due_date, assignee_id
+  //        ai_do(사장님이 AI에게 지시), ai_rec(AI 추천 업무), ai_state(queued|working|needs_input|done), ai_note(AI 최근 메모),
+  //        ai_log([{at,msg}]), related([id]), parent_id, triaged_at(AI가 부서·기간 정리한 시각), created_by(owner|ai)
+  const AIST = { queued: ['🤖 대기', 'info'], working: ['🤖 AI 진행중', 'warn'], needs_input: ['🙋 확인 필요', 'bad'], done: ['🤖 AI 완료', 'ok'] };
+  const PRANK = { urgent: 0, high: 1, normal: 2, low: 3 };
   VIEWS.tasks = async v => {
     const [list, org] = await Promise.all([GET('/api/admin/tasks'), GET('/api/admin/org')]);
     const w = canW('tasks');
-    v.innerHTML = `<div class="card"><div class="toolbar"><select id="tdept"><option value="">전체 부서</option>${org.departments.map(x => `<option value="${x.code}">${esc(x.name)}</option>`).join('')}</select><span class="sp"></span>${w ? '<button class="btn primary" id="tnew">＋ 업무 추가</button>' : ''}</div></div>
-      <div class="kanban">${Object.entries(STATUS).map(([k, n]) => `<div class="col" data-col="${k}"><h4>${n}<span class="muted">${list.filter(t => t.status === k).length}</span></h4>${list.filter(t => t.status === k).map(t => `<div class="tk" draggable="${w}" data-tid="${t.id}" data-dept="${t.department || ''}" style="--c:${t.color || 'var(--line)'}"><b>${esc(t.title)}</b><div class="row"><span class="tag ${PRIO[t.priority]?.[1]}">${PRIO[t.priority]?.[0]}</span><span class="tag">${esc(t.dept || '-')}</span>${t.assignee ? `<span class="tag info">${esc(t.assignee)}</span>` : ''}${t.due_date ? `<span class="tag">~${esc(t.due_date)}</span>` : ''}</div>${t.body ? `<p>${esc(t.body)}</p>` : ''}</div>`).join('')}</div>`).join('')}</div>`;
-    $('#tdept').onchange = e => $$('.tk', v).forEach(t => { t.hidden = e.target.value && t.dataset.dept !== e.target.value; });
+    const byId = Object.fromEntries(list.map(t => [String(t.id), t]));
+    const card = t => {
+      const ai = AIST[t.ai_state];
+      const rel = (t.related || []).filter(id => byId[id]);
+      const body = t.body || '', note = t.ai_note || '';
+      return `<div class="tk${t.ai_rec ? ' airec' : ''}" draggable="${w}" data-tid="${t.id}" data-dept="${t.department || ''}" style="--c:${t.color || 'var(--line)'}">
+        ${t.ai_rec ? '<span class="tag ai">🤖 AI 추천</span>' : ''}<b>${esc(t.title)}</b>
+        <div class="row"><span class="tag ${PRIO[t.priority]?.[1] || ''}">${PRIO[t.priority]?.[0] || '보통'}</span><span class="tag">${esc(t.dept || '부서 미정')}</span>${t.assignee ? `<span class="tag info">${esc(t.assignee)}</span>` : ''}${t.start_date || t.due_date ? `<span class="tag">📅 ${esc(t.start_date || '')}~${esc(t.due_date || '')}</span>` : ''}${ai ? `<span class="tag ${ai[1]}">${ai[0]}</span>` : ''}${rel.length ? `<span class="tag" title="${esc(rel.map(id => byId[id].title).join(' / '))}">🔗 연관 ${rel.length}</span>` : ''}${!t.triaged_at && t.status !== 'done' ? '<span class="tag">⏳ AI 정리 대기</span>' : ''}</div>
+        ${body ? `<p>${esc(body.length > 140 ? body.slice(0, 140) + '…' : body)}</p>` : ''}
+        ${note ? `<p class="ainote">🤖 ${esc(note.length > 160 ? note.slice(0, 160) + '…' : note)}</p>` : ''}
+        ${w && t.status !== 'done' ? `<label class="aido" title="체크하면 AI가 다음 확인 시간에 이 업무를 진행해요"><input type="checkbox" data-aido="${t.id}" ${t.ai_do ? 'checked' : ''}> 🤖 AI에게 맡기기</label>` : ''}
+      </div>`;
+    };
+    v.innerHTML = `<div class="card"><div class="toolbar"><select id="tdept"><option value="">전체 부서</option>${org.departments.map(x => `<option value="${x.code}">${esc(x.name)}</option>`).join('')}</select>
+      <select id="tai"><option value="">전체 업무</option><option value="rec">🤖 AI 추천만</option><option value="do">🤖 AI에게 맡긴 것</option><option value="need">🙋 확인 필요</option></select>
+      <span class="sp"></span>${w ? '<button class="btn primary" id="tnew">＋ 업무 추가</button>' : ''}</div>
+      <p class="muted" style="font-size:12px;margin:8px 2px 0">업무를 추가해두면 AI가 확인 시간(매일 12:40 · 16:40 · 21:40)에 부서·기간·우선순위·연관 업무를 정리해요. <b>🤖 AI에게 맡기기</b>를 체크하면 다음 확인 시간에 AI가 진행하고, 결과와 질문은 카드의 🤖 메모로 남겨요. <b>🤖 AI 추천</b> 표시는 AI가 제안한 업무예요. (AI 확인은 사장님 PC의 Aside가 켜져 있을 때만 돌아요)</p></div>
+      <div class="kanban">${Object.entries(STATUS).map(([k, n]) => `<div class="col" data-col="${k}"><h4>${n}<span class="muted">${list.filter(t => t.status === k).length}</span></h4>${list.filter(t => t.status === k).sort((a, b) => (PRANK[a.priority] ?? 2) - (PRANK[b.priority] ?? 2)).map(card).join('')}</div>`).join('')}</div>`;
+    const applyFilter = () => { const dp = $('#tdept').value, ai = $('#tai').value; $$('.tk', v).forEach(el => { const t = byId[el.dataset.tid]; el.hidden = !!((dp && el.dataset.dept !== dp) || (ai === 'rec' && !t.ai_rec) || (ai === 'do' && !t.ai_do) || (ai === 'need' && t.ai_state !== 'needs_input')); }); };
+    $('#tdept').onchange = applyFilter; $('#tai').onchange = applyFilter;
     if (!w) return;
+    $$('input[data-aido]', v).forEach(cb => {
+      cb.onclick = e => e.stopPropagation();
+      cb.onchange = async e => { const on = e.target.checked; await PATCH('/api/admin/tasks/' + e.target.dataset.aido, on ? { ai_do: true, ai_state: 'queued' } : { ai_do: false, ai_state: '' }); toast(on ? '🤖 AI에게 맡겼어요 (다음 확인 시간에 진행)' : 'AI 지시 취소'); VIEWS.tasks(v); };
+    });
     let drag = null;
-    $$('.tk', v).forEach(t => { t.ondragstart = () => { drag = t; t.classList.add('dragging'); }; t.ondragend = () => t.classList.remove('dragging'); t.ondblclick = () => taskForm(list.find(x => String(x.id) === t.dataset.tid)); });
+    $$('.tk', v).forEach(t => { t.ondragstart = () => { drag = t; t.classList.add('dragging'); }; t.ondragend = () => t.classList.remove('dragging'); t.ondblclick = () => taskForm(byId[t.dataset.tid]); });
     $$('.col', v).forEach(c => {
       c.ondragover = e => { e.preventDefault(); c.classList.add('over'); };
       c.ondragleave = () => c.classList.remove('over');
@@ -527,15 +554,29 @@
     });
     const taskForm = t => {
       t = t || { title: '', body: '', department: '', priority: 'normal', status: 'todo' };
-      openDrawer(`<h2>${t.id ? '업무 편집' : '업무 추가'}</h2><form class="form" id="tf"><label class="full">제목<input name="title" value="${esc(t.title)}" required></label>
-        <label>부서<select name="department">${org.departments.map(x => `<option value="${x.code}" ${t.department === x.code ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+      const rel = (t.related || []).filter(id => byId[id]);
+      const log = (t.ai_log || []).slice(-12).reverse();
+      openDrawer(`<h2>${t.id ? '업무 편집' : '업무 추가'}${t.ai_rec ? ' <span class="tag ai">🤖 AI 추천</span>' : ''}</h2><form class="form" id="tf"><label class="full">제목<input name="title" value="${esc(t.title)}" required></label>
+        <label>부서<select name="department"><option value="">AI가 정해줘</option>${org.departments.map(x => `<option value="${x.code}" ${t.department === x.code ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
         <label>담당자<select name="assignee_id"><option value="">미지정</option>${org.staff.filter(s => s.active).map(s => `<option value="${s.id}" ${t.assignee_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>
         <label>우선순위<select name="priority">${Object.entries(PRIO).map(([k, [n]]) => `<option value="${k}" ${t.priority === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>상태<select name="status">${Object.entries(STATUS).map(([k, n]) => `<option value="${k}" ${t.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>시작일<input type="date" name="start_date" value="${esc(t.start_date || '')}"></label>
         <label>마감일<input type="date" name="due_date" value="${esc(t.due_date || '')}"></label>
-        <label class="full">내용<textarea name="body" rows="5">${esc(t.body || '')}</textarea></label>
+        <label class="full">내용<textarea name="body" rows="5" placeholder="대충 적어두면 AI가 부서·기간·우선순위를 정리해요">${esc(t.body || '')}</textarea></label>
+        <label class="full aido"><input type="checkbox" name="ai_do" ${t.ai_do ? 'checked' : ''}> 🤖 AI에게 맡기기 (다음 확인 시간에 AI가 진행)</label>
+        ${rel.length ? `<div class="full"><b style="font-size:12px">🔗 연관 업무</b><ul style="margin:4px 0 0;padding-left:18px;font-size:12px">${rel.map(id => `<li>${esc(byId[id].title)} <span class="muted">(${STATUS[byId[id].status] || ''})</span></li>`).join('')}</ul></div>` : ''}
+        ${t.ai_note || log.length ? `<div class="full ailog"><b style="font-size:12px">🤖 AI 메모</b>${t.ai_note ? `<p>${esc(t.ai_note)}</p>` : ''}${log.length ? `<ul>${log.map(x => `<li><span class="muted">${esc((x.at || '').replace('T', ' ').slice(0, 16))}</span> ${esc(x.msg)}</li>`).join('')}</ul>` : ''}</div>` : ''}
         <div class="full row"><button class="btn primary">저장</button>${t.id ? '<button type="button" class="btn danger" id="tdel">삭제</button>' : ''}</div></form>`);
-      $('#tf').onsubmit = async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); f.assignee_id = f.assignee_id ? +f.assignee_id : null; t.id ? await PATCH('/api/admin/tasks/' + t.id, f) : await POST('/api/admin/tasks', f); closeDrawer(); VIEWS.tasks(v); };
-      $('#tdel') && ($('#tdel').onclick = async () => { await DEL('/api/admin/tasks/' + t.id); closeDrawer(); VIEWS.tasks(v); });
+      $('#tf').onsubmit = async e => {
+        e.preventDefault(); const fd = new FormData(e.target); const f = Object.fromEntries(fd);
+        f.assignee_id = f.assignee_id ? +f.assignee_id : null; f.ai_do = fd.has('ai_do');
+        if (f.ai_do && !t.ai_do) f.ai_state = 'queued';
+        if (!f.ai_do && t.ai_do && t.ai_state === 'queued') f.ai_state = '';
+        if (!t.id) f.created_by = 'owner';
+        t.id ? await PATCH('/api/admin/tasks/' + t.id, f) : await POST('/api/admin/tasks', f); closeDrawer(); VIEWS.tasks(v);
+      };
+      $('#tdel') && ($('#tdel').onclick = async () => { if (!confirm('이 업무를 삭제할까요?')) return; await DEL('/api/admin/tasks/' + t.id); closeDrawer(); VIEWS.tasks(v); });
     };
     $('#tnew').onclick = () => taskForm();
   };
@@ -576,6 +617,8 @@
   addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
   $('#rangeSeg').onclick = e => { const b = e.target.closest('[data-days]'); if (!b) return; S.days = +b.dataset.days; $$('#rangeSeg button').forEach(x => x.classList.toggle('on', x === b)); route(); };
   $('#demoToggle').onchange = e => { S.demo = e.target.checked; route(); };
+  // 데모 포함 끔 (2026-11-02): 체크 해제 + 토글 숨김
+  (() => { const dt = $('#demoToggle'); if (dt) { dt.checked = false; const lb = dt.closest('label'); if (lb) lb.hidden = true; else dt.hidden = true; } })();
   $('#menuBtn').onclick = () => $('#side').classList.toggle('open');
   $('#themeToggle').onclick = () => { const n = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = n; localStorage.setItem('tp_admin_theme', n); };
 

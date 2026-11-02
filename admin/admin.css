@@ -251,3 +251,5 @@ table.kv tr + tr th, table.kv tr + tr td { border-top: 1px solid var(--line); }
   .side-x { display: block; align-self: flex-end; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font-size: 16px; cursor: pointer; margin-bottom: 4px; flex: none; }
   .side-bg.on { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 39; }
 }
+.form label.aido { flex-direction: row; align-items: center; justify-content: flex-start; }
+.form label.aido input { width: auto; margin: 0; }

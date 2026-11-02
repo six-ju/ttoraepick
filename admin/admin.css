@@ -217,3 +217,4 @@ body { word-break: keep-all; }
 .ailog { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
 .ailog p { margin: 6px 0; }
 .ailog ul { margin: 6px 0 0; padding-left: 16px; }
+.tk p, .tk b, .ailog { overflow-wrap: anywhere; }

@@ -818,9 +818,10 @@
     const af = META.ads.provider === 'adfit' && META.ads.adfit && META.ads.adfit[code];
     if (af) { // 카카오 애드핏 (애드센스 승인 전). 모바일 웹 크기 단위(320x100·300x250)를 PC에서도 가운데 정렬로 사용
       // 같은 광고단위는 한 화면에 한 번만 → 목록 사이 광고는 활성 패널의 첫 자리만
-      if (code === 'infeed' && document.querySelector('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')) { el.closest('.tp-scard')?.remove(); return; }
       const unit = af.id || af.mo || af.pc, w = af.w || 320, h = af.h || 100;
       if (!unit) return;
+      // 같은 광고단위는 한 페이지에 한 번만 (미리 불러온 옆 카테고리 패널까지 같은 단위가 중복으로 호출되지 않게)
+      if (document.querySelector(`ins.kakao_ad_area[data-ad-unit="${unit}"]`)) { const box = el.closest('.tp-scard'); box ? box.remove() : (el.innerHTML = ''); return; }
       el.dataset.af = 1;
       el.innerHTML = `<ins class="kakao_ad_area" style="display:none" data-ad-unit="${esc(unit)}" data-ad-width="${w}" data-ad-height="${h}" data-ad-onfail="tpAdfitFail"></ins>`;
       const s = document.createElement('script'); s.async = true; s.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js'; el.appendChild(s);

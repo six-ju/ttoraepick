@@ -245,7 +245,8 @@
       const grid = $('.grid', p.el);
       if (!d.total) grid.outerHTML = emptyHtml();
       else {
-        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => cardHtml(it, start + i) + adAfter(start + i)).join(''));
+        const cols = gridCols(grid);
+        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => cardHtml(it, start + i) + adAfter(start + i, cols)).join(''));
         $$('.tp-slot:not([data-done])', grid).forEach(renderAd);
         bindImgs(grid);
       }
@@ -794,15 +795,25 @@
 
   // ---------- 광고 (AdSense / 개발 중 자리표시) ----------
   const adIO = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { track('ad_impression', { slot: e.target.dataset.slot }); adIO.unobserve(e.target); } }), { threshold: .5 });
-  function adAfter(i) {
+  // 광고 배치 (11/3 사장님 요청): 첫 화면에 상품이 먼저 보이게 상단 배너를 히어로 아래가 아니라 상품 2줄 뒤로 옮김.
+  // 목록 사이 광고(infeed)는 상단 배너와 바로 붙지 않게 1줄 이상 띄움.
+  function gridCols(grid) {
+    const n = grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').filter(v => v && v !== 'none').length : 0;
+    return n || (isMobile() ? 2 : 5);
+  }
+  function adAfter(i, cols = 2) {
+    const top = META.ads.slots.find(x => x.code === 'top_banner');
     const s = META.ads.slots.find(x => x.code === 'infeed');
-    return s && s.everyN && (i + 1) % s.everyN === 0 ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
+    const firstAt = cols * 2;
+    if (top && i + 1 === firstAt) return `<div class="tp-scard tp-top"><div class="tp-slot" data-slot="top_banner"></div></div>`;
+    return s && s.everyN && (i + 1) % s.everyN === 0 && (i + 1) > firstAt + cols ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
   }
   function renderAd(el) {
     if (el.dataset.done) return;
     el.dataset.done = 1;
     const code = el.dataset.slot, slot = META.ads.slots.find(s => s.code === code);
     if (!slot) return;
+    if (code === 'top_banner' && el.closest('.tp-sw')) { el.closest('.tp-sw').hidden = true; return; } // 상단 배너는 상품 목록 안(adAfter)에서 표시
     if (META.ads.client && slot.slot) {
       el.innerHTML = `<ins class="adsbygoogle" style="display:block" data-ad-client="${esc(META.ads.client)}" data-tp-slot="${esc(slot.slot)}" data-ad-format="${slot.format === 'fluid' ? 'fluid' : 'auto'}" ${slot.format === 'fluid' ? 'data-ad-layout-key="-6t+ed+2i-1n-4w"' : ''} data-full-width-responsive="true"></ins>`;
       try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { /* */ }

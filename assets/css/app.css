@@ -486,3 +486,5 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
   .hero { padding: 30px 20px 18px; }
   .hero-sub { margin: 12px 0 20px; }
 }
+.tp-slot[data-af] { display: flex; justify-content: center; min-height: 90px; } .tp-slot[data-af] .kakao_ad_area { max-width: 100%; }
+@media (max-width: 860px) { .tp-slot[data-af] { min-height: 100px; } }

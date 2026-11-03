@@ -488,3 +488,4 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 }
 .tp-slot[data-af] { display: flex; justify-content: center; } .tp-slot[data-af] .kakao_ad_area { max-width: 100%; } /* 광고가 채워지기 전에는 높이 0 → 빈 상자 없음 */
 .tp-scard:has(.tp-slot[data-af]) { display: flex; justify-content: center; }
+.tp-sw.tp-cur { margin-top: 14px; } .tp-sw.tp-cur .tp-slot[data-af] { padding: 2px 0; }

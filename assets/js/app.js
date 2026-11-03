@@ -698,6 +698,7 @@
     const byId = new Map(d.items.map(p => [p.id, p]));
     box.innerHTML = list.map(c => `<button class="cur" data-cur="${c.id}"><h3>${esc(c.title)}</h3><p>${esc(c.subtitle || '')}</p><div class="thumbs">${c.productIds.slice(0, 5).map(id => byId.get(id)).filter(Boolean).map(p => `<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">`).join('')}</div></button>`).join('');
     box.hidden = false;
+    const curAd = $('.tp-slot[data-slot="curation"]'); if (curAd) renderAd(curAd);
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-cur]'); if (!b) return;
       const c = list.find(x => x.id === +b.dataset.cur);
@@ -804,6 +805,12 @@
   function adAfter(i, cols = 2) {
     const top = META.ads.slots.find(x => x.code === 'top_banner');
     const s = META.ads.slots.find(x => x.code === 'infeed');
+    if (!isMobile()) { // PC (11/4 사장님 요청): 상품 10개 안팎마다 광고, 더보기로 늘어나도 계속. 줄이 깨지지 않게 열 수의 배수로 맞춤 (5열=10개, 6열=12개)
+      const every = cols * Math.max(1, Math.round(10 / cols));
+      if ((i + 1) % every) return '';
+      if (top && i + 1 === every) return `<div class="tp-scard tp-top"><div class="tp-slot" data-slot="top_banner"></div></div>`;
+      return s ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
+    }
     const firstAt = cols * 2;
     if (top && i + 1 === firstAt) return `<div class="tp-scard tp-top"><div class="tp-slot" data-slot="top_banner"></div></div>`;
     return s && s.everyN && (i + 1) % s.everyN === 0 && (i + 1) > firstAt + cols ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
@@ -815,15 +822,20 @@
     const code = el.dataset.slot, slot = META.ads.slots.find(s => s.code === code);
     if (!slot) return;
     if (code === 'top_banner' && el.closest('.tp-sw')) { el.closest('.tp-sw').hidden = true; return; } // 상단 배너는 상품 목록 안(adAfter)에서 표시
+    if (code === 'curation') { // 기획전 아래 광고: 모바일 전용, 기획전이 보일 때만
+      if (!isMobile()) { el.closest('.tp-sw')?.setAttribute('hidden', ''); return; }
+      if ($('#curations')?.hidden) { delete el.dataset.done; return; } // renderCurations 뒤에 다시 호출
+    }
     const af = META.ads.provider === 'adfit' && META.ads.adfit && META.ads.adfit[code];
+    if (META.ads.provider === 'adfit' && !af) { const box = el.closest('.tp-scard'); box ? box.remove() : el.closest('.tp-sw')?.setAttribute('hidden', ''); return; } // 애드핏 단위가 없는 자리(하단 등)는 비움
     if (af) { // 카카오 애드핏 (애드센스 승인 전). 자리마다 PC용·모바일용 광고단위를 따로 둠
-      // 같은 광고단위는 한 화면에 한 번만 → 목록 사이 광고는 활성 패널의 첫 자리만
-      // PC(가로 861px 이상)는 728x90, 모바일은 320x100·300x250 단위
-      const mo = isMobile(), pick = (mo ? af.mo : af.pc) || af.mo || af.pc || af;
-      const unit = typeof pick === 'string' ? pick : pick.id, w = pick.w || (mo ? 320 : 728), h = pick.h || (mo ? 100 : 90);
-      if (!unit) return;
-      // 같은 광고단위는 한 페이지에 한 번만 (미리 불러온 옆 카테고리 패널까지 같은 단위가 중복으로 호출되지 않게)
-      if (document.querySelector(`ins.kakao_ad_area[data-ad-unit="${unit}"]`)) { const box = el.closest('.tp-scard'); box ? box.remove() : (el.innerHTML = ''); return; }
+      const mo = isMobile(), cand = mo ? af.mo : af.pc;
+      const list = (Array.isArray(cand) ? cand : cand ? [cand] : []).map(x => typeof x === 'string' ? { id: x } : x);
+      // 애드핏 운영정책: 한 페이지 광고 4개 초과 금지 → 목록·배너는 3개까지, 상품 상세 하단 1개는 남겨 둠. 같은 단위는 한 페이지에 한 번만
+      const used = new Set([...document.querySelectorAll('ins.kakao_ad_area')].map(i => i.dataset.adUnit));
+      const pick = list.find(x => !used.has(x.id));
+      if (!pick || used.size >= (code === 'detail_bottom' ? 4 : 3)) { const box = el.closest('.tp-scard'); box ? box.remove() : (el.innerHTML = ''); return; }
+      const unit = pick.id, w = pick.w || (mo ? 320 : 728), h = pick.h || (mo ? 100 : 90);
       el.dataset.af = 1;
       el.innerHTML = `<ins class="kakao_ad_area" style="display:none" data-ad-unit="${esc(unit)}" data-ad-width="${w}" data-ad-height="${h}" data-ad-onfail="tpAdfitFail"></ins>`;
       const s = document.createElement('script'); s.async = true; s.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js'; el.appendChild(s);

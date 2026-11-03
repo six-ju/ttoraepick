@@ -808,6 +808,7 @@
     if (top && i + 1 === firstAt) return `<div class="tp-scard tp-top"><div class="tp-slot" data-slot="top_banner"></div></div>`;
     return s && s.everyN && (i + 1) % s.everyN === 0 && (i + 1) > firstAt + cols ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
   }
+  window.tpAdfitFail = ins => { const box = ins && ins.closest('.tp-scard, .tp-sw, .tp-slot'); if (box) box.style.display = 'none'; };
   function renderAd(el) {
     if (el.dataset.done) return;
     el.dataset.done = 1;
@@ -815,13 +816,14 @@
     if (!slot) return;
     if (code === 'top_banner' && el.closest('.tp-sw')) { el.closest('.tp-sw').hidden = true; return; } // 상단 배너는 상품 목록 안(adAfter)에서 표시
     const af = META.ads.provider === 'adfit' && META.ads.adfit && META.ads.adfit[code];
-    if (af) { // 카카오 애드핏 (애드센스 승인 전). 같은 광고단위는 한 화면에 한 번만 → 목록 사이 광고는 첫 자리만
-      if (code === 'infeed' && document.querySelector('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')) { el.innerHTML = ''; return; }
-      const mo = isMobile(), unit = mo ? (af.mo || af.pc) : (af.pc || af.mo);
+    if (af) { // 카카오 애드핏 (애드센스 승인 전). 모바일 웹 크기 단위(320x100·300x250)를 PC에서도 가운데 정렬로 사용
+      // 같은 광고단위는 한 화면에 한 번만 → 목록 사이 광고는 활성 패널의 첫 자리만
+      if (code === 'infeed' && document.querySelector('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')) { el.closest('.tp-scard')?.remove(); return; }
+      const unit = af.id || af.mo || af.pc, w = af.w || 320, h = af.h || 100;
       if (!unit) return;
       el.dataset.af = 1;
-      el.innerHTML = `<ins class="kakao_ad_area" style="display:none" data-ad-unit="${esc(unit)}" data-ad-width="${mo ? 320 : 728}" data-ad-height="${mo ? 100 : 90}"></ins>`;
-      const s = document.createElement('script'); s.async = true; s.src = 'https://t1.daumcdn.net/kas/static/ba.min.js'; el.appendChild(s);
+      el.innerHTML = `<ins class="kakao_ad_area" style="display:none" data-ad-unit="${esc(unit)}" data-ad-width="${w}" data-ad-height="${h}" data-ad-onfail="tpAdfitFail"></ins>`;
+      const s = document.createElement('script'); s.async = true; s.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js'; el.appendChild(s);
     } else if (META.ads.client && slot.slot) {
       el.innerHTML = `<ins class="adsbygoogle" style="display:block" data-ad-client="${esc(META.ads.client)}" data-ad-slot="${esc(slot.slot)}" data-ad-format="${slot.format === 'fluid' ? 'fluid' : 'auto'}" ${slot.format === 'fluid' ? 'data-ad-layout-key="-6t+ed+2i-1n-4w"' : ''} data-full-width-responsive="true"></ins>`;
       try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { /* */ }

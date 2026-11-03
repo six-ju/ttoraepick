@@ -161,6 +161,15 @@
       return { id: 1, email: user.email, name: user.displayName || '대표', role: 'owner', roleLabel: '대표(오너) · 구글 로그인', perms: ['*'] };
     },
     '/api/admin/dashboard': q => dashboard(q),
+    // 카카오 애드핏 리포트: 구글 로그인 토큰을 Cloudflare Worker로 보내서 서버가 사장님 확인 후 애드핏 API 조회 (API 키는 서버에만)
+    '/api/admin/adfit': async q => {
+      const { auth } = await fb();
+      if (!auth.currentUser) throw new Error('로그인 필요');
+      const tok = await auth.currentUser.getIdToken();
+      const base = (window.TP_SEARCH || 'https://ttorae-search.ttorae.workers.dev').replace(/\/$/, '');
+      const r = await fetch(base + '/adfit/report?days=' + (Math.min(90, +q.get('days') || 30)), { headers: { Authorization: 'Bearer ' + tok } });
+      return r.json();
+    },
     '/api/admin/live': async () => { const l = await events(Date.now() - 864e5); return { last5min: new Set(l.filter(e => e.ts > Date.now() - 5 * 60e3).map(e => e.sid)).size, events: l.slice(0, 30).map((e, i) => ({ id: i, type: e.t, age: e.a, query: e.q, device: e.d, created_at: new Date(e.ts).toISOString(), title: byId.get(e.p)?.title, source: e.s })) }; },
     '/api/admin/products': async q => {
       const st = await productStats(Date.now() - 30 * 864e5);

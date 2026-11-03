@@ -148,6 +148,33 @@
   // ---------- 화면들 ----------
   const delta = (c, p) => { if (!p) return c ? '<span class="d up">▲ 신규</span>' : '<span class="d flat">-</span>'; const r = (c - p) / p * 100; return `<span class="d ${r > 0.5 ? 'up' : r < -0.5 ? 'down' : 'flat'}">${r > 0 ? '▲' : r < 0 ? '▼' : ''} ${Math.abs(r).toFixed(1)}% <span class="muted" style="font-weight:500">이전 ${S.days}일 대비</span></span>`; };
   const VIEWS = {};
+  // 카카오 애드핏 실적 카드 (대시보드·광고 화면 공용). 데이터는 어제까지(애드핏은 당일 데이터 미제공), 30분 캐시
+  async function renderAdfit(el, days = 30) {
+    if (!el) return;
+    let d;
+    try { d = await GET('/api/admin/adfit?days=' + days); } catch (e) { d = { error: 'fail', message: e.message }; }
+    if (!el.isConnected) return;
+    if (d.error) {
+      el.innerHTML = `<h3>📢 카카오 애드핏</h3><p class="muted" style="margin:0">${d.error === 'no_key' ? '애드핏 리포트 API 키가 아직 없어요. 애드핏 고객센터(카카오톡 채널)에 <b>리포트 API 권한</b>을 요청하면 <b>관리 &gt; API 키 관리</b> 메뉴가 생기고, 키를 발급해 주시면 여기에 바로 수익·노출·클릭이 나와요.' : d.error === 'forbidden' ? '사장님 계정 확인에 실패했어요. 다시 로그인해 주세요.' : '애드핏 데이터를 가져오지 못했어요: ' + esc(d.message || d.error)}</p>`;
+      return;
+    }
+    const rows = d.rows || [], sum = k => rows.reduce((s, r) => s + (+r[k] || 0), 0);
+    const byDay = {}; rows.forEach(r => { const x = byDay[r.d] ||= { profit: 0, imp: 0, clicks: 0 }; x.profit += +r.profit || 0; x.imp += +r.vimp || +r.imp || 0; x.clicks += +r.clicks || 0; });
+    const dates = Object.keys(byDay).sort(), last = dates[dates.length - 1], y = byDay[last] || { profit: 0, imp: 0, clicks: 0 };
+    const last7 = dates.slice(-7).reduce((s, k) => s + byDay[k].profit, 0);
+    const byUnit = {}; rows.forEach(r => { const u = byUnit[r.unit] ||= { name: r.unitName, media: r.media, profit: 0, imp: 0, clicks: 0, req: 0 }; u.profit += +r.profit || 0; u.imp += +r.vimp || +r.imp || 0; u.clicks += +r.clicks || 0; u.req += +r.req || 0; });
+    const imp = sum('vimp') || sum('imp'), clk = sum('clicks');
+    el.innerHTML = `<h3>📢 카카오 애드핏 <span class="sub">${esc(d.from)} ~ ${esc(d.to)} · ${d.cached ? '30분 캐시' : '방금 조회'}</span></h3>
+      <div class="grid g4 kpis" style="margin-bottom:12px">
+        <div class="card kpi"><div class="lb">어제 적립금 (${esc(last || '-')})</div><div class="v">${won(y.profit)}</div><span class="muted">노출 ${num(y.imp)} · 클릭 ${num(y.clicks)}</span></div>
+        <div class="card kpi"><div class="lb">최근 7일 적립금</div><div class="v">${won(last7)}</div></div>
+        <div class="card kpi"><div class="lb">${days}일 적립금</div><div class="v">${won(sum('profit'))}</div>${dates.length > 1 ? chart.spark(dates.map(k => byDay[k].profit), '#ff4a5c') : ''}</div>
+        <div class="card kpi"><div class="lb">${days}일 노출 / 클릭</div><div class="v">${num(imp)} / ${num(clk)}</div><span class="muted">CTR ${imp ? (clk / imp * 100).toFixed(2) : '0.00'}%</span></div>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr><th>광고단위</th><th>매체</th><th class="num">요청</th><th class="num">노출</th><th class="num">클릭</th><th class="num">적립금</th></tr></thead><tbody>
+      ${Object.entries(byUnit).sort((a, b) => b[1].profit - a[1].profit || b[1].imp - a[1].imp).map(([id, u]) => `<tr><td><b>${esc(u.name || id)}</b><br><code>${esc(id)}</code></td><td>${esc(u.media || '')}</td><td class="num">${num(u.req)}</td><td class="num">${num(u.imp)}</td><td class="num">${num(u.clicks)}</td><td class="num"><b>${won(u.profit)}</b></td></tr>`).join('') || '<tr><td colspan="6" class="empty">아직 실적이 없어요 (매체 심사 중이거나 노출 전)</td></tr>'}
+      </tbody></table></div>`;
+  }
 
   VIEWS.dashboard = async v => {
     const d = await GET('/api/admin/dashboard?' + rq());
@@ -169,6 +196,7 @@
     $('#banner').innerHTML = `ℹ️ 데모(가상) 데이터 ${num(d.demoCount)}건이 포함되어 있습니다. 실제 운영 데이터만 보려면 상단 <b>데모 포함</b>을 끄세요. 설정 &gt; 데모 데이터 삭제로 지울 수 있습니다.`;
     v.innerHTML = `
       <div class="grid g4 kpis">${kpis.map(([lb, cv, pv, sp, txt, ptxt], i) => `<div class="card kpi ${i === 7 ? 'accent' : ''}"><div class="lb">${lb}</div><div class="v">${txt || num(cv)}</div>${txt && ptxt ? `<span class="d flat">이전 ${ptxt}</span>` : delta(cv, pv)}${sp ? chart.spark(sp, i === 7 ? '#fff' : '#ff4a5c') : ''}</div>`).join('')}</div>
+      <div class="card" id="adfitCard"><h3>📢 카카오 애드핏 <span class="sub">불러오는 중…</span></h3></div>
       <div class="grid g21">
         <div class="card"><h3>📈 일별 트래픽 <span class="sub">KST 기준</span></h3><div id="cTraffic"></div></div>
         <div class="card"><h3>🛍️ 쇼핑몰별 구매 이동</h3><div id="cSource"></div></div>
@@ -206,6 +234,7 @@
         <div class="card"><h3>✅ 우선 처리 업무 <a class="sub" href="#/tasks">보드 열기 →</a></h3><div class="list">${d.urgentTasks.map(t => `<div class="li"><i class="dot" style="background:${t.color}"></i><span style="flex:1">${esc(t.title)}</span><span class="tag ${PRIO[t.priority][1]}">${PRIO[t.priority][0]}</span></div>`).join('')}</div>
           <h3 style="margin-top:18px">⚡ 실시간 <span class="sub" id="liveN"></span></h3><div class="live list" id="live"></div></div>
       </div>`;
+    renderAdfit($('#adfitCard'), 30);
     chart.line($('#cTraffic'), days.map(x => x.d), [
       { name: '페이지뷰', color: '#8b5cf6', values: days.map(x => x.pageviews || 0) },
       { name: '상품 조회', color: '#3b82f6', values: days.map(x => x.views || 0) },
@@ -468,7 +497,9 @@
       ${d.slots.map(s => `<tr data-slot="${s.code}"><td><b>${esc(s.name)}</b><br><code>${s.code}</code></td><td>${esc(s.placement)}</td><td><select data-k="format" ${w ? '' : 'disabled'}>${['auto', 'horizontal', 'rectangle', 'fluid'].map(f => `<option ${s.format === f ? 'selected' : ''}>${f}</option>`).join('')}</select></td>
         <td><input data-k="adsense_slot" value="${esc(s.adsense_slot)}" placeholder="1234567890" style="width:130px" ${w ? '' : 'disabled'}></td><td><input data-k="every_n" type="number" value="${s.every_n}" style="width:64px" ${w ? '' : 'disabled'}></td>
         <td class="num">${num(st[s.code]?.impressions)}</td><td class="num">${num(st[s.code]?.clicks)}</td><td><label class="switch"><input type="checkbox" data-k="enabled" ${s.enabled ? 'checked' : ''} ${w ? '' : 'disabled'}><span></span></label></td><td>${w ? '<button class="btn sm" data-save>저장</button>' : ''}</td></tr>`).join('')}
-      </tbody></table></div></div>`;
+      </tbody></table></div></div>
+      <div class="card" id="adfitCard2"><h3>📢 카카오 애드핏 <span class="sub">불러오는 중…</span></h3></div>`;
+    renderAdfit($('#adfitCard2'), 30);
     if (!w) return;
     $('#adf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); try { await PUT('/api/admin/settings', { adsense_client: f.get('adsense_client'), adsense_enabled: !!f.get('adsense_enabled') }); toast('저장'); } catch (er) { toast(er.message); } };
     $$('[data-save]', v).forEach(b => b.onclick = async () => {

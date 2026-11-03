@@ -843,8 +843,8 @@
       const usedIds = () => new Set([...document.querySelectorAll('ins.kakao_ad_area')].map(i => i.dataset.adUnit));
       let used = usedIds(), pick = list.find(x => !used.has(x.id));
       if ((!pick || used.size >= (code === 'detail_bottom' ? 4 : 3)) && code === 'infeed') {
-        // 더보기로 내려가면 화면 위로 지나간 가장 오래된 목록 광고를 거둬서 새 자리에 다시 씀 → 10개 안팎마다 광고가 이어지되 한 페이지 동시 4개 이하 유지
-        const old = [...document.querySelectorAll('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')].find(s => s.getBoundingClientRect().bottom < 0 && list.some(x => x.id === s.querySelector('ins')?.dataset.adUnit));
+        // 더보기로 내려가면 위쪽의 가장 오래된 목록 광고를 거둬서 새 자리에 다시 씀 → 10개 안팎마다 광고가 이어지되 한 페이지 동시 4개 이하 유지
+        const old = [...document.querySelectorAll('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')].find(s => s !== el && (s.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) && list.some(x => x.id === s.querySelector('ins')?.dataset.adUnit)); // 새 자리보다 위(먼저)에 있는 가장 오래된 목록 광고
         if (old) { old.closest('.tp-scard')?.remove(); used = usedIds(); pick = list.find(x => !used.has(x.id)); }
       }
       if (!pick || used.size >= (code === 'detail_bottom' ? 4 : 3)) { const box = el.closest('.tp-scard'); box ? box.remove() : (el.innerHTML = ''); return; }

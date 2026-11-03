@@ -247,7 +247,7 @@
       if (!d.total) grid.outerHTML = emptyHtml();
       else {
         const cols = gridCols(grid);
-        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => cardHtml(it, start + i) + adAfter(start + i, cols)).join(''));
+        grid.insertAdjacentHTML('beforeend', d.items.map((it, i) => (start + i > 0 ? adAfter(start + i - 1, cols) : '') + cardHtml(it, start + i)).join('') /* 광고는 다음 상품 앞에 넣음 → 목록 끝(더보기 버튼 바로 위)에는 광고가 오지 않음 (오클릭 방지) */);
         $$('.tp-slot:not([data-done])', grid).forEach(renderAd);
         bindImgs(grid);
       }

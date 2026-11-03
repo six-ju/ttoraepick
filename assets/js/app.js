@@ -183,6 +183,7 @@
     ensurePanel(c.slug);
     // 이웃 패널 미리 로드 → 스와이프 시 바로 보임
     [idx - 1, idx + 1].forEach(i => CATS[i] && setTimeout(() => ensurePanel(CATS[i].slug), 400));
+    refreshAds();
     fitHeight();
     syncUrl();
   }
@@ -815,6 +816,11 @@
     if (top && i + 1 === firstAt) return `<div class="tp-scard tp-top"><div class="tp-slot" data-slot="top_banner"></div></div>`;
     return s && s.everyN && (i + 1) % s.everyN === 0 && (i + 1) > firstAt + cols ? `<div class="tp-scard"><div class="tp-slot" data-slot="infeed"></div></div>` : '';
   }
+  function refreshAds() {
+    if (!META || META.ads?.provider !== 'adfit') return;
+    $$('.cat-panel:not(.active) .tp-slot[data-af]').forEach(el => { el.innerHTML = ''; delete el.dataset.af; delete el.dataset.done; });
+    $$('.cat-panel.active .tp-slot:not([data-done])').forEach(renderAd);
+  }
   window.tpAdfitFail = ins => { const box = ins && ins.closest('.tp-scard, .tp-sw, .tp-slot'); if (box) box.style.display = 'none'; };
   function renderAd(el) {
     if (el.dataset.done) return;
@@ -829,11 +835,18 @@
     const af = META.ads.provider === 'adfit' && META.ads.adfit && META.ads.adfit[code];
     if (META.ads.provider === 'adfit' && !af) { const box = el.closest('.tp-scard'); box ? box.remove() : el.closest('.tp-sw')?.setAttribute('hidden', ''); return; } // 애드핏 단위가 없는 자리(하단 등)는 비움
     if (af) { // 카카오 애드핏 (애드센스 승인 전). 자리마다 PC용·모바일용 광고단위를 따로 둠
+      // 화면에 보이지 않는 옆 카테고리 패널은 광고를 미뤄 둠 (그 패널로 넘어갈 때 refreshAds가 다시 그림)
+      if (el.closest('.cat-panel') && !el.closest('.cat-panel.active')) { delete el.dataset.done; return; }
       const mo = isMobile(), cand = mo ? af.mo : af.pc;
       const list = (Array.isArray(cand) ? cand : cand ? [cand] : []).map(x => typeof x === 'string' ? { id: x } : x);
       // 애드핏 운영정책: 한 페이지 광고 4개 초과 금지 → 목록·배너는 3개까지, 상품 상세 하단 1개는 남겨 둠. 같은 단위는 한 페이지에 한 번만
-      const used = new Set([...document.querySelectorAll('ins.kakao_ad_area')].map(i => i.dataset.adUnit));
-      const pick = list.find(x => !used.has(x.id));
+      const usedIds = () => new Set([...document.querySelectorAll('ins.kakao_ad_area')].map(i => i.dataset.adUnit));
+      let used = usedIds(), pick = list.find(x => !used.has(x.id));
+      if ((!pick || used.size >= (code === 'detail_bottom' ? 4 : 3)) && code === 'infeed') {
+        // 더보기로 내려가면 화면 위로 지나간 가장 오래된 목록 광고를 거둬서 새 자리에 다시 씀 → 10개 안팎마다 광고가 이어지되 한 페이지 동시 4개 이하 유지
+        const old = [...document.querySelectorAll('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')].find(s => s.getBoundingClientRect().bottom < 0 && list.some(x => x.id === s.querySelector('ins')?.dataset.adUnit));
+        if (old) { old.closest('.tp-scard')?.remove(); used = usedIds(); pick = list.find(x => !used.has(x.id)); }
+      }
       if (!pick || used.size >= (code === 'detail_bottom' ? 4 : 3)) { const box = el.closest('.tp-scard'); box ? box.remove() : (el.innerHTML = ''); return; }
       const unit = pick.id, w = pick.w || (mo ? 320 : 728), h = pick.h || (mo ? 100 : 90);
       el.dataset.af = 1;

@@ -814,8 +814,16 @@
     const code = el.dataset.slot, slot = META.ads.slots.find(s => s.code === code);
     if (!slot) return;
     if (code === 'top_banner' && el.closest('.tp-sw')) { el.closest('.tp-sw').hidden = true; return; } // 상단 배너는 상품 목록 안(adAfter)에서 표시
-    if (META.ads.client && slot.slot) {
-      el.innerHTML = `<ins class="adsbygoogle" style="display:block" data-ad-client="${esc(META.ads.client)}" data-tp-slot="${esc(slot.slot)}" data-ad-format="${slot.format === 'fluid' ? 'fluid' : 'auto'}" ${slot.format === 'fluid' ? 'data-ad-layout-key="-6t+ed+2i-1n-4w"' : ''} data-full-width-responsive="true"></ins>`;
+    const af = META.ads.provider === 'adfit' && META.ads.adfit && META.ads.adfit[code];
+    if (af) { // 카카오 애드핏 (애드센스 승인 전). 같은 광고단위는 한 화면에 한 번만 → 목록 사이 광고는 첫 자리만
+      if (code === 'infeed' && document.querySelector('.cat-panel.active .tp-slot[data-slot="infeed"][data-af]')) { el.innerHTML = ''; return; }
+      const mo = isMobile(), unit = mo ? (af.mo || af.pc) : (af.pc || af.mo);
+      if (!unit) return;
+      el.dataset.af = 1;
+      el.innerHTML = `<ins class="kakao_ad_area" style="display:none" data-ad-unit="${esc(unit)}" data-ad-width="${mo ? 320 : 728}" data-ad-height="${mo ? 100 : 90}"></ins>`;
+      const s = document.createElement('script'); s.async = true; s.src = 'https://t1.daumcdn.net/kas/static/ba.min.js'; el.appendChild(s);
+    } else if (META.ads.client && slot.slot) {
+      el.innerHTML = `<ins class="adsbygoogle" style="display:block" data-ad-client="${esc(META.ads.client)}" data-ad-slot="${esc(slot.slot)}" data-ad-format="${slot.format === 'fluid' ? 'fluid' : 'auto'}" ${slot.format === 'fluid' ? 'data-ad-layout-key="-6t+ed+2i-1n-4w"' : ''} data-full-width-responsive="true"></ins>`;
       try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch { /* */ }
     } else if (/localhost|127\.0\.0\.1/.test(location.hostname) || location.protocol === 'file:' || new URLSearchParams(location.search).has('adpreview')) {
       el.innerHTML = `<div class="tp-sph"><div><b>AD</b> · ${esc(code)} 광고 자리 (AdSense 승인 후 자동 표시)</div></div>`;

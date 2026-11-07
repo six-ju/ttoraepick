@@ -253,3 +253,10 @@ table.kv tr + tr th, table.kv tr + tr td { border-top: 1px solid var(--line); }
 }
 .form label.aido { flex-direction: row; align-items: center; justify-content: flex-start; }
 .form label.aido input { width: auto; margin: 0; }
+
+/* 보류 (2026-11-07) */
+.col.holdbox { margin-top: 14px; min-height: 0; padding: 12px 14px; }
+.holdbox summary { cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.holdbox summary .muted { font-weight: 400; font-size: 12px; }
+.holdgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-top: 12px; }
+.holdgrid .tk { margin-bottom: 0; opacity: .85; }

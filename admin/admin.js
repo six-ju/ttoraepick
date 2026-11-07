@@ -13,7 +13,7 @@
   const SRC = { coupang: ['쿠팡', '#E52528'], naver: ['네이버', '#03C75A'], daiso: ['다이소', '#D6001C'], musinsa: ['무신사', '#555'], oliveyoung: ['올리브영', '#84b520'] };
   const CAT = { food: '🍙 식품', health: '🧴 생활/건강', beauty: '💄 뷰티', fashion: '👕 패션의류', acc: '👜 패션잡화', digital: '🎧 디지털/가전', living: '🛋️ 가구/인테리어', sports: '⛺ 스포츠/레저', baby: '🍼 출산/육아' };
   const PRIO = { urgent: ['긴급', 'bad'], high: ['높음', 'warn'], normal: ['보통', 'info'], low: ['낮음', ''] };
-  const STATUS = { todo: '할 일', doing: '진행 중', review: '검토', done: '완료' };
+  const STATUS = { todo: '할 일', doing: '진행 중', review: '검토', done: '완료', hold: '보류' };
 
   // ---------- API ----------
   async function api(method, url, body) {
@@ -566,18 +566,21 @@
       const fo = fbOpen(t), fn = (t.comments || []).length;
       return `<div class="tk${t.ai_rec ? ' airec' : ''}" draggable="${w}" data-tid="${t.id}" data-dept="${t.department || ''}" style="--c:${t.color || 'var(--line)'}">
         ${t.ai_rec ? '<span class="tag ai">🤖 AI 추천</span>' : ''}<b>${esc(t.title)}</b>
-        <div class="row"><span class="tag ${PRIO[t.priority]?.[1] || ''}">${PRIO[t.priority]?.[0] || '보통'}</span><span class="tag">${esc(t.dept || '부서 미정')}</span>${t.assignee ? `<span class="tag info">${esc(t.assignee)}</span>` : ''}${t.start_date || t.due_date ? `<span class="tag">📅 ${esc(t.start_date || '')}~${esc(t.due_date || '')}</span>` : ''}${ai ? `<span class="tag ${ai[1]}">${ai[0]}</span>` : ''}${rel.length ? `<span class="tag" title="${esc(rel.map(id => byId[id].title).join(' / '))}">🔗 연관 ${rel.length}</span>` : ''}${fo ? `<span class="tag warn">💬 피드백 반영 대기 ${fo}</span>` : fn ? `<span class="tag">💬 ${fn}</span>` : ''}${!t.triaged_at && t.status !== 'done' ? '<span class="tag">⏳ AI 정리 대기</span>' : ''}</div>
+        <div class="row"><span class="tag ${PRIO[t.priority]?.[1] || ''}">${PRIO[t.priority]?.[0] || '보통'}</span><span class="tag">${esc(t.dept || '부서 미정')}</span>${t.assignee ? `<span class="tag info">${esc(t.assignee)}</span>` : ''}${t.start_date || t.due_date ? `<span class="tag">📅 ${esc(t.start_date || '')}~${esc(t.due_date || '')}</span>` : ''}${ai ? `<span class="tag ${ai[1]}">${ai[0]}</span>` : ''}${rel.length ? `<span class="tag" title="${esc(rel.map(id => byId[id].title).join(' / '))}">🔗 연관 ${rel.length}</span>` : ''}${fo ? `<span class="tag warn">💬 피드백 반영 대기 ${fo}</span>` : fn ? `<span class="tag">💬 ${fn}</span>` : ''}${!t.triaged_at && t.status !== 'done' && t.status !== 'hold' ? '<span class="tag">⏳ AI 정리 대기</span>' : ''}</div>
         ${body ? `<p>${esc(body.length > 140 ? body.slice(0, 140) + '…' : body)}</p>` : ''}
         ${note ? `<p class="ainote">🤖 ${esc(note.length > 160 ? note.slice(0, 160) + '…' : note)}</p>` : ''}
         <div class="tk-act">${w && t.status !== 'done' ? `<label class="aido" title="체크하면 AI가 다음 확인 시간에 이 업무를 진행해요"><input type="checkbox" data-aido="${t.id}" ${t.ai_do ? 'checked' : ''}> 🤖 AI에게 맡기기</label>` : '<span></span>'}${w ? `<button type="button" class="btn sm fbbtn" data-fb="${t.id}">💬 피드백</button>` : ''}</div>
       </div>`;
     };
     const gOpen = gfb.filter(f => f.by === 'owner' && !f.done).length;
+    const holdL = list.filter(t => t.status === 'hold').sort((a, b) => (PRANK[a.priority] ?? 2) - (PRANK[b.priority] ?? 2));
     v.innerHTML = `<div class="card"><div class="toolbar"><select id="tdept"><option value="">전체 부서</option>${org.departments.map(x => `<option value="${x.code}">${esc(x.name)}</option>`).join('')}</select>
       <select id="tai"><option value="">전체 업무</option><option value="rec">🤖 AI 추천만</option><option value="do">🤖 AI에게 맡긴 것</option><option value="need">🙋 확인 필요</option><option value="fb">💬 피드백 반영 대기</option></select>
       <span class="sp"></span>${w ? `<button class="btn" id="gfbBtn">💬 AI에게 전체 피드백${gOpen ? ` <span class="tag warn">${gOpen}</span>` : ''}</button><button class="btn primary" id="tnew">＋ 업무 추가</button>` : ''}</div>
-      <p class="muted" style="font-size:12px;margin:8px 2px 0">업무를 추가해두면 AI가 확인 시간(매일 12:40 · 16:40 · 21:40)에 부서·기간·우선순위·연관 업무를 정리해요. <b>🤖 AI에게 맡기기</b>를 체크하면 다음 확인 시간에 AI가 진행해요. 카드의 <b>💬 피드백</b>에 적어두시면 AI가 다음 확인 때 읽고 반영한 뒤 답을 달아요. <b>🤖 AI 추천</b>은 AI가 제안한 업무예요. (AI 확인은 사장님 PC의 Aside가 켜져 있을 때만 돌아요)</p></div>
-      <div class="kanban">${Object.entries(STATUS).map(([k, n]) => `<div class="col" data-col="${k}"><h4>${n}<span class="muted">${list.filter(t => t.status === k).length}</span></h4>${list.filter(t => t.status === k).sort((a, b) => (PRANK[a.priority] ?? 2) - (PRANK[b.priority] ?? 2)).map(card).join('')}</div>`).join('')}</div>`;
+      <p class="muted" style="font-size:12px;margin:8px 2px 0">업무를 추가해두면 AI가 확인 시간(매일 12:40 · 16:40 · 21:40)에 부서·기간·우선순위·연관 업무를 정리해요. <b>🤖 AI에게 맡기기</b>를 체크하면 다음 확인 시간에 AI가 진행해요. 카드의 <b>💬 피드백</b>에 적어두시면 AI가 다음 확인 때 읽고 반영한 뒤 답을 달아요. <b>🤖 AI 추천</b>은 AI가 제안한 업무예요. 당장 안 할 업무는 아래 <b>⏸ 보류</b>로 끌어다 두면 할 일 목록에서 빠져요. (AI 확인은 사장님 PC의 Aside가 켜져 있을 때만 돌아요)</p></div>
+      <div class="kanban">${Object.entries(STATUS).filter(([k]) => k !== 'hold').map(([k, n]) => `<div class="col" data-col="${k}"><h4>${n}<span class="muted">${list.filter(t => t.status === k).length}</span></h4>${list.filter(t => t.status === k).sort((a, b) => (PRANK[a.priority] ?? 2) - (PRANK[b.priority] ?? 2)).map(card).join('')}</div>`).join('')}</div>
+      <details class="col holdbox" data-col="hold" ${localStorage.getItem('tp_hold_open') === '1' ? 'open' : ''}><summary>⏸ 보류 <span class="tag">${holdL.length}</span><span class="muted">당장은 안 하지만 나중에 다시 볼 업무예요. 카드를 여기로 끌어다 놓으면 보류돼요 (눌러서 펼치기).</span></summary><div class="holdgrid">${holdL.map(card).join('') || '<p class="muted" style="font-size:12px;margin:0">보류된 업무가 없어요.</p>'}</div></details>`;
+    const hb = $('.holdbox', v); if (hb) hb.ontoggle = () => localStorage.setItem('tp_hold_open', hb.open ? '1' : '0');
     const applyFilter = () => { const dp = $('#tdept').value, ai = $('#tai').value; $$('.tk', v).forEach(el => { const t = byId[el.dataset.tid]; el.hidden = !!((dp && el.dataset.dept !== dp) || (ai === 'rec' && !t.ai_rec) || (ai === 'do' && !t.ai_do) || (ai === 'need' && t.ai_state !== 'needs_input') || (ai === 'fb' && !fbOpen(t))); }); };
     $('#tdept').onchange = applyFilter; $('#tai').onchange = applyFilter;
     if (!w) return;

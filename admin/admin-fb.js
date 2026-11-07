@@ -135,7 +135,7 @@
       bySourceCatalog: Object.values(SRC).map(s => ({ k: s.code, name: s.name, color: s.color, n: cnt(P, p => p.source === s.code) })),
       jobs: (META.collectors?.jobs || []).map(j => ({ code: j.code, name: j.name, enabled: j.enabled, last_run_at: j.last_run_at, last_status: j.last_status, last_message: j.last_message, interval_min: j.interval_min })),
       tasks: Object.entries(groupBy(tasks, t => t.status)).map(([status, l]) => ({ status, n: l.length })),
-      urgentTasks: tasks.filter(t => t.status !== 'done').sort((a, b) => (prio[a.priority] ?? 2) - (prio[b.priority] ?? 2)).slice(0, 6),
+      urgentTasks: tasks.filter(t => t.status !== 'done' && t.status !== 'hold').sort((a, b) => (prio[a.priority] ?? 2) - (prio[b.priority] ?? 2)).slice(0, 6),
       coupangApproval: { gmv: revenue.filter(r => r.channel === 'coupang').reduce((s, r) => s + (+r.gmv || 0), 0), goal: 150000 },
       demoCount: 0, keywordDate: DATA.keywords?.date,
     };

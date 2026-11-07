@@ -4,8 +4,24 @@
   'use strict';
   window.TP_STATIC = true;
   const D = window.TP_DATA;
-  const P = D.products; // shaped + go(구매 링크)
-  const byId = new Map(P.map(p => [p.id, p]));
+  const ALL = D.products; // shaped + go(구매 링크)
+  const byId = new Map(ALL.map(p => [p.id, p]));
+  // 광고 차단 프로그램이 ads-partners.coupang.com 이미지를 막는 브라우저에서는 그 이미지를 쓰는 상품을 목록에서 뺀다
+  // (안 빼면 'NO IMAGE' 카드가 순위에 섞여 보임). 공유 링크·찜(ids, 상세)은 그대로 찾을 수 있게 byId는 전체 유지.
+  const AD_IMG = /^https?:\/\/ads-partners\.coupang\.com\//;
+  let P = ALL;
+  const imgProbe = (() => {
+    const sample = ALL.find(p => AD_IMG.test(p.image || ''));
+    if (!sample) return Promise.resolve();
+    const apply = blocked => { P = blocked ? ALL.filter(p => !AD_IMG.test(p.image || '')) : ALL; };
+    let saved = null; try { saved = sessionStorage.getItem('tp_adimg'); } catch { /* 무시 */ }
+    if (saved) { apply(saved === 'blocked'); return Promise.resolve(); }
+    const save = v => { try { sessionStorage.setItem('tp_adimg', v); } catch { /* 무시 */ } };
+    // HEAD + no-cors: 응답이 오면(상태 무관) 막히지 않은 것, 바로 실패하면 차단된 것
+    const probe = window.fetch(sample.image, { method: 'HEAD', mode: 'no-cors', credentials: 'omit', cache: 'no-store' })
+      .then(() => { apply(false); save('ok'); }, () => { apply(true); save('blocked'); });
+    return Promise.race([probe, new Promise(r => setTimeout(r, 1500))]);
+  })();
   const minRank = p => { const v = Object.values(p.ages || {}); return v.length ? Math.min(...v) : null; };
   const SORT = {
     popular: (a, b) => (b.pinned - a.pinned) || (b.score - a.score),
@@ -18,7 +34,7 @@
     new: (a, b) => b.id - a.id,
   };
   function products(q) {
-    if (q.get('ids')) { const items = q.get('ids').split(',').map(Number).map(i => byId.get(i)).filter(Boolean); return { items, total: items.length }; }
+    if (q.get('ids')) { const blocked = P !== ALL; const items = q.get('ids').split(',').map(Number).map(i => byId.get(i)).filter(Boolean).map(p => (blocked && AD_IMG.test(p.image || '') ? { ...p, image: null } : p)); return { items, total: items.length }; }
     const age = q.get('age'), cat = q.get('category'), src = q.get('source'), brand = q.get('brand'), text = (q.get('q') || '').trim(), sort = q.get('sort') || 'popular';
     let list = P.filter(p => (!cat || cat === 'all' || p.category === cat) && (!src || src === 'all' || src.split(',').includes(p.source)) && (!brand || brand.split('|').includes(p.brand)));
     if (text) { const terms = text.toLowerCase().split(/\s+/); list = list.filter(p => terms.every(t => [p.title, p.brand, p.keyword, p.mall].some(f => (f || '').toLowerCase().includes(t)))); }
@@ -65,6 +81,9 @@
   window.fetch = (input, init) => {
     const url = typeof input === 'string' ? input : input.url;
     if (!url.startsWith('/api/')) return origFetch(input, init);
+    return imgProbe.then(() => route(url));
+  };
+  const route = url => {
     const u = new URL(url, 'http://x'), q = u.searchParams, path = u.pathname;
     if (path === '/api/meta') return ok(D.meta);
     if (path === '/api/products') return ok(products(q));

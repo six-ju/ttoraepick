@@ -697,7 +697,7 @@
     const ids = [...new Set(list.flatMap(c => c.productIds))].slice(0, 200);
     const d = ids.length ? await api('/api/products?ids=' + ids.join(',')).catch(() => ({ items: [] })) : { items: [] };
     const byId = new Map(d.items.map(p => [p.id, p]));
-    box.innerHTML = list.map(c => `<button class="cur" data-cur="${c.id}"><h3>${esc(c.title)}</h3><p>${esc(c.subtitle || '')}</p><div class="thumbs">${c.productIds.slice(0, 5).map(id => byId.get(id)).filter(Boolean).map(p => `<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">`).join('')}</div></button>`).join('');
+    box.innerHTML = list.map(c => `<button class="cur" data-cur="${c.id}"><h3>${esc(c.title)}</h3><p>${esc(c.subtitle || '')}</p><div class="thumbs">${c.productIds.map(id => byId.get(id)).filter(p => p && p.image).slice(0, 5).map(p => `<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">`).join('')}</div></button>`).join('');
     box.hidden = false;
     const curAd = $('.tp-slot[data-slot="curation"]'); if (curAd) renderAd(curAd);
     box.addEventListener('click', e => {

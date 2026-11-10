@@ -35,7 +35,7 @@
       if (e.resultCount !== undefined && e.resultCount !== null) d.n = Math.round(+e.resultCount) || 0;
       if (e.slot) d.slot = str(e.slot, 30);
       if (e.sid) d.sid = str(e.sid, 40);
-      if (e.referrer) d.ref = str(e.referrer, 200);
+      if (e.referrer || e.from) d.ref = str((e.from ? 'from=' + e.from + ' ' : '') + (e.referrer || ''), 200).trim();
       fl.addDoc(col, d).catch(() => { /* 규칙 위반·네트워크 오류는 무시 */ });
     }
   };

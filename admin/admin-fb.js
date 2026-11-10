@@ -121,6 +121,8 @@
     const heat = Object.entries(heatM).map(([k, n]) => { const [dow, h] = k.split('_').map(Number); return { dow, h, n }; });
     const topProducts = Object.entries(groupBy(cur.filter(e => e.p), e => e.p)).map(([id, l]) => { const p = byId.get(+id) || {}; return { id: +id, title: p.title || '(삭제된 상품 ' + id + ')', source: p.source, brand: p.brand, price: p.price, image: p.image, aff: /link\.coupang\.com/.test(p.go || ''), views: cnt(l, e => e.t === 'view'), clicks: cnt(l, e => e.t === 'click'), wishes: cnt(l, e => e.t === 'wish') }; }).sort((a, b) => b.clicks - a.clicks || b.views - a.views).slice(0, 10);
     const srch = cur.filter(e => e.t === 'search' && e.q);
+    const sFrom = {}; cur.forEach(e => { const f = (/^from=(\S+)/.exec(e.ref || '') || [])[1]; if (f && e.sid) sFrom[e.sid] = f; });
+    const byFrom = Object.entries(groupBy(cur.filter(e => sFrom[e.sid]), e => sFrom[e.sid])).map(([k, l]) => ({ k, sessions: new Set(l.map(e => e.sid)).size, pageviews: cnt(l, e => e.t === 'pageview'), views: cnt(l, e => e.t === 'view'), clicks: cnt(l, e => e.t === 'click') })).sort((a, b) => b.sessions - a.sessions);
     const topSearches = Object.entries(groupBy(srch, e => e.q)).map(([k, l]) => ({ k, n: l.length, avg_results: +(l.reduce((s, e) => s + (e.n || 0), 0) / l.length).toFixed(1), zero: cnt(l, e => !e.n) })).sort((a, b) => b.n - a.n).slice(0, 12);
     const zeroSearches = topSearches.filter(s => s.zero).map(s => ({ k: s.k, n: s.zero })).slice(0, 8);
     const tasks = await tasksList();
@@ -129,7 +131,7 @@
       range: { days, from: new Date(from).toISOString() },
       cur: { ...kpi(cur), ...revSum(revenue.filter(r => r.date >= fromD)) }, prev: { ...kpi(prev), ...revSum(revenue.filter(r => r.date >= prevD && r.date < fromD)) },
       daily, revDaily: revenue.filter(r => r.date >= fromD).map(r => ({ d: r.date, channel: r.channel, commission: +r.commission || 0, orders: +r.orders || 0, gmv: +r.gmv || 0, clicks: +r.clicks || 0 })),
-      bySource, byAge, byCategory, byDevice, heat, topProducts, topSearches, zeroSearches,
+      bySource, byAge, byCategory, byDevice, heat, topProducts, topSearches, zeroSearches, byFrom,
       funnel: { s1: uniq(cur, e => e.t === 'pageview'), s2: uniq(cur, e => e.t === 'view'), s3: uniq(cur, e => e.t === 'click') },
       catalog: { total: P.length, active: P.length, hidden: 0, affiliate: cnt(P, p => /link\.coupang\.com/.test(p.go || '')), stale: 0, noimg: cnt(P, p => !p.image) },
       bySourceCatalog: Object.values(SRC).map(s => ({ k: s.code, name: s.name, color: s.color, n: cnt(P, p => p.source === s.code) })),

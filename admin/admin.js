@@ -196,7 +196,7 @@
     $('#banner').innerHTML = `ℹ️ 데모(가상) 데이터 ${num(d.demoCount)}건이 포함되어 있습니다. 실제 운영 데이터만 보려면 상단 <b>데모 포함</b>을 끄세요. 설정 &gt; 데모 데이터 삭제로 지울 수 있습니다.`;
     v.innerHTML = `
       <div class="grid g4 kpis">${kpis.map(([lb, cv, pv, sp, txt, ptxt], i) => `<div class="card kpi ${i === 7 ? 'accent' : ''}"><div class="lb">${lb}</div><div class="v">${txt || num(cv)}</div>${txt && ptxt ? `<span class="d flat">이전 ${ptxt}</span>` : delta(cv, pv)}${sp ? chart.spark(sp, i === 7 ? '#fff' : '#ff4a5c') : ''}</div>`).join('')}</div>
-      <div class="card" id="adfitCard"><h3>📢 카카오 애드핏 <span class="sub">불러오는 중…</span></h3></div>
+      
       <div class="grid g21">
         <div class="card"><h3>📈 일별 트래픽 <span class="sub">KST 기준</span></h3><div id="cTraffic"></div></div>
         <div class="card"><h3>🛍️ 쇼핑몰별 구매 이동</h3><div id="cSource"></div></div>
@@ -234,7 +234,7 @@
         <div class="card"><h3>✅ 우선 처리 업무 <a class="sub" href="#/tasks">보드 열기 →</a></h3><div class="list">${d.urgentTasks.map(t => `<div class="li"><i class="dot" style="background:${t.color}"></i><span style="flex:1">${esc(t.title)}</span><span class="tag ${PRIO[t.priority][1]}">${PRIO[t.priority][0]}</span></div>`).join('')}</div>
           <h3 style="margin-top:18px">⚡ 실시간 <span class="sub" id="liveN"></span></h3><div class="live list" id="live"></div></div>
       </div>`;
-    renderAdfit($('#adfitCard'), 30);
+    
     chart.line($('#cTraffic'), days.map(x => x.d), [
       { name: '페이지뷰', color: '#8b5cf6', values: days.map(x => x.pageviews || 0) },
       { name: '상품 조회', color: '#3b82f6', values: days.map(x => x.views || 0) },
@@ -499,8 +499,8 @@
         <td><input data-k="adsense_slot" value="${esc(s.adsense_slot)}" placeholder="1234567890" style="width:130px" ${w ? '' : 'disabled'}></td><td><input data-k="every_n" type="number" value="${s.every_n}" style="width:64px" ${w ? '' : 'disabled'}></td>
         <td class="num">${num(st[s.code]?.impressions)}</td><td class="num">${num(st[s.code]?.clicks)}</td><td><label class="switch"><input type="checkbox" data-k="enabled" ${s.enabled ? 'checked' : ''} ${w ? '' : 'disabled'}><span></span></label></td><td>${w ? '<button class="btn sm" data-save>저장</button>' : ''}</td></tr>`).join('')}
       </tbody></table></div></div>
-      <div class="card" id="adfitCard2"><h3>📢 카카오 애드핏 <span class="sub">불러오는 중…</span></h3></div>`;
-    renderAdfit($('#adfitCard2'), 30);
+      `;
+    
     if (!w) return;
     $('#adf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); try { await PUT('/api/admin/settings', { adsense_client: f.get('adsense_client'), adsense_enabled: !!f.get('adsense_enabled') }); toast('저장'); } catch (er) { toast(er.message); } };
     $$('[data-save]', v).forEach(b => b.onclick = async () => {

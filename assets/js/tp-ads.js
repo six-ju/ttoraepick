@@ -24,7 +24,7 @@
   window.tpSideFail = ins => { const b = ins && ins.closest('.tp-rail, .tp-mid'); if (b) b.style.display = 'none'; };
 
   const st = document.createElement('style');
-  st.textContent = '.tp-rail{position:fixed;top:96px;width:' + SW + 'px;height:' + SH + 'px;z-index:5;overflow:hidden}' +
+  st.textContent = '.tp-rail{position:fixed;top:96px;width:' + SW + 'px;height:' + SH + 'px;z-index:35;overflow:hidden}' +
     '.tp-mid{margin:20px auto;text-align:center;overflow:hidden;clear:both}.tp-mid ins{margin:0 auto}' +
     '@media (max-width:860px){.tp-rail{display:none!important}}';
   document.head.appendChild(st);

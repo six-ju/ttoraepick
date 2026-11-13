@@ -160,7 +160,7 @@
       const { user } = await fb();
       if (!(await isOwner(user))) throw new Error('로그인 필요');
       localStorage.setItem('tp_owner', '1');
-      return { id: 1, email: user.email, name: user.displayName || '대표', role: 'owner', roleLabel: '대표(오너) · 구글 로그인', perms: ['*'] };
+      return { id: 1, email: user.email, name: user.displayName || '대표', role: 'owner', roleLabel: '대표(오너) · 구글 로그인', perms: ['dashboard', 'analytics', 'products', 'keywords', 'curations', 'collectors', 'revenue.write', 'ads', 'tasks.write', 'settings', 'logs'] }; // 정적 사이트: 업무·수익만 저장 가능, 나머지는 조회 전용 (2026-11-13 7XAA)
     },
     '/api/admin/dashboard': q => dashboard(q),
     '/api/admin/adinsight': async () => (await col('adinsight')).find(d => d.id === 'latest') || null, // AI가 애드핏 화면을 보고 정리한 분석 (owner 전용)

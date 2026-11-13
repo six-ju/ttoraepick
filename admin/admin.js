@@ -132,6 +132,7 @@
     $('#nav').innerHTML = PAGES.map(p => p.g ? `<div class="nav-g">${p.g}</div>` : (can(p.perm) ? `<a class="nav-a" href="#/${p.id}" data-p="${p.id}"><span class="ic">${p.ic}</span>${p.t}</a>` : '')).join('');
   }
   let liveTimer = null;
+  const RO_NOTE = { products: '상품 등록·수정·삭제·가져오기', curations: '기획전 추가·수정·삭제 (엔진 config/curations.json 으로 대신 관리해요)', collectors: '수집기 실행·켜기/끄기 (엔진이 하루 2번 자동 실행해요)', ads: '광고 자리 저장', settings: '사이트 설정 저장·비밀번호 변경·데모 데이터 삭제', org: '직원 추가·권한 변경' };
   async function route() {
     clearInterval(liveTimer);
     const id = (location.hash.match(/^#\/(\w+)/) || [])[1] || 'dashboard';
@@ -143,6 +144,7 @@
     v.style.animation = 'none'; void v.offsetWidth; v.style.animation = '';
     v.innerHTML = '<div class="grid g4"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div><div class="skel" style="height:300px"></div>';
     try { await VIEWS[pg.id](v); } catch (e) { if (e.message !== 'static') v.innerHTML = `<div class="card empty">⚠️ ${esc(e.message)}</div>`; }
+    if (STATIC && STATIC.__fb && RO_NOTE[pg.id]) v.insertAdjacentHTML('afterbegin', `<div class="card" style="margin-bottom:12px;border-left:4px solid #f5a623"><b>🔒 조회만 가능해요</b> · 정적 사이트에서는 ${RO_NOTE[pg.id]} 기능이 막혀 있어요. 필요하면 업무 보드에 적어 주세요.</div>`);
   }
   addEventListener('hashchange', route);
 
@@ -676,7 +678,7 @@
       <div class="card"><h3>🖥️ 시스템</h3><div class="list">${Object.entries(d.system).map(([k, val]) => `<div class="li">${k}<span class="sp"></span><code>${esc(String(val))}</code></div>`).join('')}</div>
         <h3 style="margin-top:20px">🧪 데모 데이터</h3><p class="muted" style="font-size:13px">대시보드 시연용 가상 트래픽/수익 데이터를 삭제합니다. 실제 운영 데이터는 유지됩니다.</p><button class="btn danger" id="purge">데모 데이터 삭제</button>
         <h3 style="margin-top:20px">🔑 내 비밀번호 변경</h3><form class="form" id="pwf"><label class="full">현재 비밀번호<input type="password" name="current" required></label><label class="full">새 비밀번호 (10자 이상)<input type="password" name="next" required minlength="10"></label><div class="full"><button class="btn">변경</button></div></form></div></div>`;
-    $('#sf').onsubmit = async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); f.maintenance = !!f.maintenance; try { await PUT('/api/admin/settings', f); toast('저장했습니다'); } catch (er) { toast(er.message); } };
+    if (STATIC && STATIC.__fb) { $('#sf input, #sf button, #purge, #pwf input, #pwf button', v).forEach(x => { x.disabled = true; x.title = '정적 사이트에서는 지원하지 않는 기능이에요'; }); } $('#sf').onsubmit = async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); f.maintenance = !!f.maintenance; try { await PUT('/api/admin/settings', f); toast('저장했습니다'); } catch (er) { toast(er.message); } };
     $('#purge').onclick = async () => { if (!confirm('데모 데이터를 모두 삭제할까요?')) return; const r = await POST('/api/admin/demo/purge'); toast(`이벤트 ${num(r.events)} · 수익 ${num(r.revenue)}건 삭제`); };
     $('#pwf').onsubmit = async e => { e.preventDefault(); try { await POST('/api/admin/password', Object.fromEntries(new FormData(e.target))); toast('비밀번호 변경됨'); e.target.reset(); } catch (er) { toast(er.message); } };
   };

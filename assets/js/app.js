@@ -529,7 +529,7 @@
       + '</div>'
       + ((p.source === 'coupang' || offers.some(o => o.source === 'coupang')) ? '<p class="d-disc">' + esc(META.site.disclosure) + '</p>' : '<p class="d-disc">구매하기를 누르면 판매처 상품 페이지로 이동합니다.</p>')
       + '</div></div>'
-      + '<div class="d-sec"><div class="tp-slot" data-slot="detail_bottom"></div><div id="dRel"></div></div>';
+      + '<div class="d-sec"><div id="dRel"></div><div class="tp-slot" data-slot="detail_bottom" style="margin-top:28px"></div></div>' /* 광고를 구매 버튼 바로 아래가 아니라 관련 상품 뒤에 둠 (오클릭 방지, 11/13 애드핏 분석) */;
   }
   function offersHtml(p, offers) {
     if (offers.length < 2) return '';
@@ -829,6 +829,7 @@
     el.dataset.done = 1;
     const code = el.dataset.slot, slot = META.ads.slots.find(s => s.code === code);
     if (!slot) return;
+    if (localStorage.getItem('tp_owner') === '1' || navigator.webdriver) { const box = el.closest('.tp-scard'); box ? box.remove() : el.closest('.tp-sw')?.setAttribute('hidden', ''); return; } // 사장님·자동화(Aside) 브라우저엔 광고 안 띄움: 본인 노출·클릭은 무효 처리·정지 사유 (광고 확인은 시크릿 창에서)
     if (code === 'top_banner' && el.closest('.tp-sw')) { el.closest('.tp-sw').hidden = true; return; } // 상단 배너는 상품 목록 안(adAfter)에서 표시
     if (code === 'curation') { // 기획전 아래 광고: 모바일 전용, 기획전이 보일 때만
       if (!isMobile()) { el.closest('.tp-sw')?.setAttribute('hidden', ''); return; }

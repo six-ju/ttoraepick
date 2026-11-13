@@ -9,7 +9,7 @@
 (() => {
   'use strict';
   const U = window.TP_ADFIT;
-  if (!U || window.__tpAds) return;
+  if (!U || window.__tpAds || localStorage.getItem('tp_owner') === '1' || navigator.webdriver) return; // 사장님·자동화 브라우저 제외 (본인 노출·클릭 무효 방지)
   window.__tpAds = 1;
   const MAX = 4, SW = 160, SH = 600, GAP = 24;
   const SRC = 'https://t1.kakaocdn.net/kas/static/ba.min.js';

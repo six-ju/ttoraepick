@@ -121,6 +121,7 @@
     { g: '수익' },
     { id: 'revenue', ic: '💰', t: '제휴 수익', perm: 'revenue' },
     { id: 'ads', ic: '📢', t: '광고 관리', perm: 'ads' },
+    { id: 'adinsight', ic: '📈', t: '광고 분석', perm: 'ads' },
     { g: '조직 / 운영' },
     { id: 'org', ic: '🏢', t: '조직·직원', perm: 'dashboard' },
     { id: 'tasks', ic: '✅', t: '업무 보드', perm: 'tasks' },
@@ -175,6 +176,29 @@
       ${Object.entries(byUnit).sort((a, b) => b[1].profit - a[1].profit || b[1].imp - a[1].imp).map(([id, u]) => `<tr><td><b>${esc(u.name || id)}</b><br><code>${esc(id)}</code></td><td>${esc(u.media || '')}</td><td class="num">${num(u.req)}</td><td class="num">${num(u.imp)}</td><td class="num">${num(u.clicks)}</td><td class="num"><b>${won(u.profit)}</b></td></tr>`).join('') || '<tr><td colspan="6" class="empty">아직 실적이 없어요 (매체 심사 중이거나 노출 전)</td></tr>'}
       </tbody></table></div>`;
   }
+
+  // 광고 분석: AI가 애드핏 화면(보고서)을 직접 보고 정리해 Firestore admin/main/adinsight/latest 에 저장한 내용을 보여줌
+  VIEWS.adinsight = async v => {
+    const d = await GET('/api/admin/adinsight');
+    if (!d) { v.innerHTML = '<div class="card empty">아직 분석이 없어요. AI에게 "애드핏 분석 갱신"을 요청하세요.</div>'; return; }
+    const s = d.summary || {}, pc = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '-';
+    const lv = { danger: '🚨', warn: '⚠️', good: '✅', info: 'ℹ️' };
+    v.innerHTML = `<p class="muted" style="margin:0 0 12px">애드핏 ${esc(d.period?.from || '')} ~ ${esc(d.period?.to || '')} · 분석 ${esc((d.updated_at || '').replace('T', ' ').slice(0, 16))}</p>
+      <div class="grid g4 kpis">
+        <div class="card kpi"><div class="lb">적립금</div><div class="v">${won(s.profit || 0)}</div><span class="muted">eCPM ${num(s.view ? Math.round(s.profit / s.view * 1000) : 0)}원</span></div>
+        <div class="card kpi"><div class="lb">광고 요청 / 실제 보임</div><div class="v">${num(s.req)} / ${num(s.view)}</div><span class="muted">보임률 ${pc(s.view, s.imp)}</span></div>
+        <div class="card kpi"><div class="lb">클릭 / CTR</div><div class="v">${num(s.click)} / ${pc(s.click, s.view)}</div><span class="muted">보통 0.1~1%</span></div>
+        <div class="card kpi"><div class="lb">사이트 페이지뷰 (사장님 제외)</div><div class="v">${num(d.site?.pageviews)}</div><span class="muted">페이지당 광고 요청 ${d.site?.pageviews ? (s.req / d.site.pageviews).toFixed(1) : '-'}회</span></div>
+      </div>
+      <div class="card" style="margin-top:14px"><h3>핵심 진단</h3>${(d.findings || []).map(f => `<div style="margin:10px 0"><b>${lv[f.lv] || ''} ${esc(f.t)}</b><div class="muted" style="margin-top:4px;white-space:pre-line">${esc(f.b)}</div></div>`).join('')}</div>
+      <div class="card" style="margin-top:14px"><h3>클릭·수익을 늘리려면 (정책 안에서)</h3><ol style="margin:0;padding-left:20px">${(d.actions || []).map(a => `<li style="margin:8px 0"><b>${esc(a.t)}</b><div class="muted" style="white-space:pre-line">${esc(a.b)}</div></li>`).join('')}</ol></div>
+      <div class="card" style="margin-top:14px"><h3>광고 자리별 성과</h3><div class="tbl-wrap"><table><thead><tr><th>광고 자리</th><th class="num">요청</th><th class="num">노출</th><th class="num">실제 보임</th><th class="num">보임률</th><th class="num">클릭</th><th class="num">CTR</th><th class="num">적립금</th></tr></thead><tbody>
+        ${(d.units || []).map(u => `<tr><td><b>${esc(u.name)}</b>${u.note ? `<br><span class="muted">${esc(u.note)}</span>` : ''}</td><td class="num">${num(u.req)}</td><td class="num">${num(u.imp)}</td><td class="num">${num(u.view)}</td><td class="num">${pc(u.view, u.imp)}</td><td class="num">${num(u.click)}</td><td class="num">${pc(u.click, u.view)}</td><td class="num">${won(u.profit)}</td></tr>`).join('')}
+      </tbody></table></div></div>
+      <div class="card" style="margin-top:14px"><h3>일별</h3><div class="tbl-wrap"><table><thead><tr><th>날짜</th><th class="num">사이트 PV</th><th class="num">광고 요청</th><th class="num">실제 보임</th><th class="num">클릭</th><th class="num">적립금</th></tr></thead><tbody>
+        ${(d.daily || []).map(x => `<tr><td>${esc(x.d)}</td><td class="num">${x.pv == null ? '-' : num(x.pv)}</td><td class="num">${num(x.req)}</td><td class="num">${num(x.view)}</td><td class="num">${num(x.click)}</td><td class="num">${won(x.profit)}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+  };
 
   VIEWS.dashboard = async v => {
     const d = await GET('/api/admin/dashboard?' + rq());

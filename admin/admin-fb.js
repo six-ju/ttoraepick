@@ -163,6 +163,7 @@
       return { id: 1, email: user.email, name: user.displayName || '대표', role: 'owner', roleLabel: '대표(오너) · 구글 로그인', perms: ['*'] };
     },
     '/api/admin/dashboard': q => dashboard(q),
+    '/api/admin/adinsight': async () => (await col('adinsight')).find(d => d.id === 'latest') || null, // AI가 애드핏 화면을 보고 정리한 분석 (owner 전용)
     // 카카오 애드핏 리포트: 구글 로그인 토큰을 Cloudflare Worker로 보내서 서버가 사장님 확인 후 애드핏 API 조회 (API 키는 서버에만)
     '/api/admin/adfit': async q => {
       const { auth } = await fb();
@@ -221,6 +222,7 @@
       let mm = m.match(/^\/api\/admin\/tasks\/([^/]+)$/);
       if (mm && method === 'PATCH') { const upd = {}; ['title', 'body', 'department', 'status', 'priority', 'due_date', 'start_date', 'assignee_id', 'ai_do', 'ai_rec', 'ai_state', 'ai_note', 'ai_log', 'related', 'parent_id', 'triaged_at', 'created_by', 'comments'].forEach(k => { if (k in body) upd[k] = body[k] ?? ''; }); upd.updated_at = new Date().toISOString(); await fl.updateDoc(fl.doc(db, 'admin', 'main', 'tasks', mm[1]), upd); audit('task_update', mm[1], upd); return { ok: true }; }
       if (mm && method === 'DELETE') { await fl.deleteDoc(fl.doc(db, 'admin', 'main', 'tasks', mm[1])); audit('task_delete', mm[1]); return { ok: true }; }
+      if (m === '/api/admin/adinsight' && method === 'POST') { await fl.setDoc(fl.doc(db, 'admin', 'main', 'adinsight', 'latest'), body); return { ok: true }; }
       if (m === '/api/admin/revenue' && method === 'POST') {
         const rows = Array.isArray(body.rows) ? body.rows : [body]; let n = 0;
         for (const x of rows) { if (!/^\d{4}-\d{2}-\d{2}$/.test(x.date || '') || !x.channel) continue; await fl.setDoc(fl.doc(db, 'admin', 'main', 'revenue', x.date + '_' + x.channel), { date: x.date, channel: String(x.channel), clicks: +x.clicks || 0, orders: +x.orders || 0, gmv: +x.gmv || 0, commission: +x.commission || 0, imported_from: x.imported_from || 'manual' }); n++; }

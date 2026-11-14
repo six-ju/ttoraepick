@@ -121,7 +121,7 @@
     { g: '수익' },
     { id: 'revenue', ic: '💰', t: '제휴 수익', perm: 'revenue' },
     { id: 'ads', ic: '📢', t: '광고 관리', perm: 'ads' },
-    { id: 'adinsight', ic: '📈', t: '광고 분석', perm: 'ads' },
+    { id: 'adinsight', ic: '📈', t: '애드핏 정산·분석', perm: 'ads' },
     { g: '조직 / 운영' },
     { id: 'org', ic: '🏢', t: '조직·직원', perm: 'dashboard' },
     { id: 'tasks', ic: '✅', t: '업무 보드', perm: 'tasks' },
@@ -180,12 +180,44 @@
   }
 
   // 광고 분석: AI가 애드핏 화면(보고서)을 직접 보고 정리해 Firestore admin/main/adinsight/latest 에 저장한 내용을 보여줌
+  // 애드핏 정산 일정 (운영정책 6.2·6.3): 매월 1일~말일 예상 적립금 → 익월 20일 확정, 확정 5만원 이상이면 매월 21일~말일 지급 요청, 다음 달 20일 입금
+  function settleHtml(s) {
+    if (!s) return '<div class="card" style="margin-bottom:14px"><h3>💸 애드핏 정산</h3><p class="muted" style="margin:0">아직 수집 전이에요. 매일 오전 11시에 애드핏에서 가져와요.</p></div>';
+    const MIN = 50000, p = s.pay || {}, k = new Date(Date.now() + 9 * 3600e3), Y = k.getUTCFullYear(), M = k.getUTCMonth(), D = k.getUTCDate();
+    const ymd = (y, m, d) => { const t = new Date(Date.UTC(y, m, d)); return `${t.getUTCFullYear()}.${t.getUTCMonth() + 1}.${t.getUTCDate()}`; };
+    const ymKey = (y, m) => { const t = new Date(Date.UTC(y, m, 1)); return t.toISOString().slice(0, 7); };
+    const mp = Object.fromEntries((s.months || []).map(x => [x.m, x.profit]));
+    const cM = D <= 20 ? M : M + 1, srcM = cM - 1; // 다음 확정일(20일)과 그때 확정되는 달
+    const toConfirm = mp[ymKey(Y, srcM)] || 0, after = (p.reserve || 0) + toConfirm;
+    const days = new Date(Date.UTC(Y, M + 1, 0)).getUTCDate(), rate = D > 1 ? (s.thisMonth || 0) / (D - 1) * 30 : 0; // 이번 달 일평균으로 한 달 추정
+    let reqM, how;
+    if ((p.requestable || 0) >= MIN) { reqM = M; how = '이미 5만원 이상 확정'; }
+    else if (after >= MIN) { reqM = cM; how = `${ymd(Y, cM, 20)} 확정 후 ${won(after)} 예상`; }
+    else if (rate > 0) { const n = Math.ceil((MIN - after) / rate); reqM = cM + n; how = `월 ${won(Math.round(rate))} 정도 쌓인다고 보면`; }
+    const open = p.period && (p.requestable || 0) >= MIN && !p.requested;
+    const daily = (s.daily || []).filter(x => x.profit != null), last = daily.slice(-14);
+    return `<div class="card" style="margin-bottom:14px"><h3>💸 애드핏 정산 <span class="sub">${esc((s.updated_at || '').replace('T', ' '))} 수집 · 매일 11시</span></h3>
+      ${open ? '<a class="btn primary" href="https://adfit.kakao.com/payout" target="_blank" rel="noopener" style="display:block;text-align:center;padding:14px;margin-bottom:12px;font-weight:700">지금 지급 신청 가능해요 (' + won(p.requestable) + ') → 애드핏에서 신청하기</a>' : ''}
+      <div class="grid g4 kpis" style="margin-bottom:12px">
+        <div class="card kpi"><div class="lb">확정 적립금</div><div class="v">${won(p.reserve || 0)}</div><span class="muted">신청 가능 ${won(p.requestable || 0)} · 최소 ${won(MIN)}</span></div>
+        <div class="card kpi"><div class="lb">미확정 예상 적립금</div><div class="v">${won(p.expected || 0)}</div><span class="muted">다음 확정 ${ymd(Y, cM, 20)} (${(srcM % 12 + 12) % 12 + 1}월분 ${won(toConfirm)})</span></div>
+        <div class="card kpi"><div class="lb">어제 적립금 (${esc(s.yesterday?.d || '-')})</div><div class="v">${won(s.yesterday?.profit || 0)}</div><span class="muted">이번 달 ${won(s.thisMonth || 0)}</span></div>
+        <div class="card kpi ${open ? 'accent' : ''}"><div class="lb">지급 신청 가능일</div><div class="v" style="font-size:20px">${open ? '지금 (~' + ymd(Y, M + 1, 0) + ')' : reqM != null ? ymd(Y, reqM, 21) + ' ~ ' + ymd(Y, reqM + 1, 0) : '-'}</div><span class="muted">${p.requested ? '이번 달 지급 요청함' : how || '수익이 더 쌓여야 계산돼요'}${reqM != null ? ' · 입금 ' + ymd(Y, reqM + 1, 20) + '경' : ''}</span></div>
+      </div>
+      ${last.length > 1 ? '<div class="muted" style="margin-bottom:4px">최근 14일 적립금</div>' + chart.spark(last.map(x => x.profit), '#ff4a5c') : ''}
+      <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>월</th><th class="num">적립금</th><th class="num">광고 요청</th><th class="num">실제 보임</th><th class="num">클릭</th><th>확정</th></tr></thead><tbody>
+        ${(s.months || []).slice().reverse().map(x => { const [yy, mm] = x.m.split('-').map(Number); const cd = new Date(Date.UTC(yy, mm, 20)); return `<tr><td>${esc(x.m)}</td><td class="num">${won(x.profit)}</td><td class="num">${num(x.req)}</td><td class="num">${num(x.view)}</td><td class="num">${num(x.click)}</td><td>${cd <= k ? '확정됨' : ymd(yy, mm, 20) + ' 확정 예정'}</td></tr>`; }).join('')}
+      </tbody></table></div>
+      <p class="muted" style="margin:10px 0 0">정산 규칙: 매달 1일~말일 적립금이 다음 달 20일에 확정 → 확정 적립금 5만원 이상이면 매월 21일~말일 애드핏 '지급' 메뉴에서 신청 → 다음 달 20일 입금(개인은 원천징수 후). 정책 위반이 의심되면 확정이 늦어지거나 차감될 수 있어요.</p>
+      <a href="https://adfit.kakao.com/payout" target="_blank" rel="noopener">애드핏 지급 화면 열기 ↗</a></div>`;
+  }
   VIEWS.adinsight = async v => {
     const d = await GET('/api/admin/adinsight');
+    if (d && !d.summary) { v.innerHTML = settleHtml(d.settle); return; }
     if (!d) { v.innerHTML = '<div class="card empty">아직 분석이 없어요. AI에게 "애드핏 분석 갱신"을 요청하세요.</div>'; return; }
     const s = d.summary || {}, pc = (a, b) => b ? (a / b * 100).toFixed(1) + '%' : '-';
     const lv = { danger: '🚨', warn: '⚠️', good: '✅', info: 'ℹ️' };
-    v.innerHTML = `<p class="muted" style="margin:0 0 12px">애드핏 ${esc(d.period?.from || '')} ~ ${esc(d.period?.to || '')} · 분석 ${esc((d.updated_at || '').replace('T', ' ').slice(0, 16))}</p>
+    v.innerHTML = settleHtml(d.settle) + `<p class="muted" style="margin:0 0 12px">애드핏 ${esc(d.period?.from || '')} ~ ${esc(d.period?.to || '')} · 분석 ${esc((d.updated_at || '').replace('T', ' ').slice(0, 16))}</p>
       <div class="grid g4 kpis">
         <div class="card kpi"><div class="lb">적립금</div><div class="v">${won(s.profit || 0)}</div><span class="muted">eCPM ${num(s.view ? Math.round(s.profit / s.view * 1000) : 0)}원</span></div>
         <div class="card kpi"><div class="lb">광고 요청 / 실제 보임</div><div class="v">${num(s.req)} / ${num(s.view)}</div><span class="muted">보임률 ${pc(s.view, s.imp)}</span></div>

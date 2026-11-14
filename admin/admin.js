@@ -196,6 +196,7 @@
     else if (rate > 0) { const n = Math.ceil((MIN - after) / rate); reqM = cM + n; how = `월 ${won(Math.round(rate))} 정도 쌓인다고 보면`; }
     const open = p.period && (p.requestable || 0) >= MIN && !p.requested;
     const daily = (s.daily || []).filter(x => x.profit != null), last = daily.slice(-14);
+    if (last.length > 1) setTimeout(() => { const el = $('#cSettle'); if (el) chart.bars(el, last.map(x => x.d.slice(5)), [{ name: '적립금', color: '#ff4a5c', values: last.map(x => x.profit) }], { h: 180, fmt: won }); }); // innerHTML 넣은 뒤 그림
     return `<div class="card" style="margin-bottom:14px"><h3>💸 애드핏 정산 <span class="sub">${esc((s.updated_at || '').replace('T', ' '))} 수집 · 매일 11시</span></h3>
       ${open ? '<a class="btn primary" href="https://adfit.kakao.com/payout" target="_blank" rel="noopener" style="display:block;text-align:center;padding:14px;margin-bottom:12px;font-weight:700">지금 지급 신청 가능해요 (' + won(p.requestable) + ') → 애드핏에서 신청하기</a>' : ''}
       <div class="grid g4 kpis" style="margin-bottom:12px">
@@ -204,7 +205,7 @@
         <div class="card kpi"><div class="lb">어제 적립금 (${esc(s.yesterday?.d || '-')})</div><div class="v">${won(s.yesterday?.profit || 0)}</div><span class="muted">이번 달 ${won(s.thisMonth || 0)}</span></div>
         <div class="card kpi ${open ? 'accent' : ''}"><div class="lb">지급 신청 가능일</div><div class="v" style="font-size:20px">${open ? '지금 (~' + ymd(Y, M + 1, 0) + ')' : reqM != null ? ymd(Y, reqM, 21) + ' ~ ' + ymd(Y, reqM + 1, 0) : '-'}</div><span class="muted">${p.requested ? '이번 달 지급 요청함' : how || '수익이 더 쌓여야 계산돼요'}${reqM != null ? ' · 입금 ' + ymd(Y, reqM + 1, 20) + '경' : ''}</span></div>
       </div>
-      ${last.length > 1 ? '<div class="muted" style="margin-bottom:4px">최근 14일 적립금</div>' + chart.spark(last.map(x => x.profit), '#ff4a5c') : ''}
+      ${last.length > 1 ? '<div class="muted" style="margin-bottom:4px">최근 14일 일별 적립금</div><div id="cSettle"></div>' : ''}
       <div class="tbl-wrap" style="margin-top:10px"><table><thead><tr><th>월</th><th class="num">적립금</th><th class="num">광고 요청</th><th class="num">실제 보임</th><th class="num">클릭</th><th>확정</th></tr></thead><tbody>
         ${(s.months || []).slice().reverse().map(x => { const [yy, mm] = x.m.split('-').map(Number); const cd = new Date(Date.UTC(yy, mm, 20)); return `<tr><td>${esc(x.m)}</td><td class="num">${won(x.profit)}</td><td class="num">${num(x.req)}</td><td class="num">${num(x.view)}</td><td class="num">${num(x.click)}</td><td>${cd <= k ? '확정됨' : ymd(yy, mm, 20) + ' 확정 예정'}</td></tr>`; }).join('')}
       </tbody></table></div>

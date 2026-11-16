@@ -1,4 +1,3 @@
-200
 /* 또래픽 public app (vanilla JS, 빌드 불필요) */
 (() => {
   'use strict';

@@ -1,3 +1,4 @@
+200
 /* 또래픽 public app (vanilla JS, 빌드 불필요) */
 (() => {
   'use strict';
@@ -123,7 +124,7 @@
     $$('[data-age]', box).forEach(b => b.setAttribute('aria-selected', b.dataset.age === age));
     moveInd(box, $('.age-ind', box), $(`[data-age="${age}"]`, box));
     $(`[data-age="${age}"]`, box).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    setHeroWord(); loadKeywords(); invalidate(); syncUrl();
+    setHeroWord(); loadKeywords(); renderCurations(); invalidate(); syncUrl();
     track('pageview', { referrer: 'age-switch' });
   }
 
@@ -692,20 +693,24 @@
     const t = e.target.closest('[data-tab]'); if (t) { drawerTab = t.dataset.tab; renderDrawer(); return; }
     const o = e.target.closest('[data-dopen]'); if (o) { closeDrawer(); openDetail(+o.dataset.dopen, null); }
   });
+  // 기획전: 선택한 연령(전체 포함)의 기획전만 보여줌 (2026-11-16, 연령 바꾸면 다시 그림)
+  let curView = { list: [], byId: new Map() }, curBound = false;
   async function renderCurations() {
-    const list = META.curations || [];
     const box = $('#curations');
-    if (!list.length) return;
+    const list = (META.curations || []).filter(c => (c.age || 'all') === state.age);
+    if (!list.length) { box.hidden = true; box.innerHTML = ''; return; }
     const ids = [...new Set(list.flatMap(c => c.productIds))].slice(0, 200);
     const d = ids.length ? await api('/api/products?ids=' + ids.join(',')).catch(() => ({ items: [] })) : { items: [] };
     const byId = new Map(d.items.map(p => [p.id, p]));
+    curView = { list, byId };
     box.innerHTML = list.map(c => `<button class="cur" data-cur="${c.id}"><h3>${esc(c.title)}</h3><p>${esc(c.subtitle || '')}</p><div class="thumbs">${c.productIds.map(id => byId.get(id)).filter(p => p && p.image).slice(0, 5).map(p => `<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" loading="lazy">`).join('')}</div></button>`).join('');
     box.hidden = false;
     const curAd = $('.tp-slot[data-slot="curation"]'); if (curAd) renderAd(curAd);
+    if (curBound) return; curBound = true;
     box.addEventListener('click', e => {
       const b = e.target.closest('[data-cur]'); if (!b) return;
-      const c = list.find(x => x.id === +b.dataset.cur);
-      openDrawer('custom', { title: c.title, subtitle: c.subtitle, items: c.productIds.map(id => byId.get(id)).filter(Boolean) });
+      const c = curView.list.find(x => x.id === +b.dataset.cur); if (!c) return;
+      openDrawer('custom', { title: c.title, subtitle: c.subtitle, items: c.productIds.map(id => curView.byId.get(id)).filter(Boolean) });
     });
   }
 

@@ -37,7 +37,12 @@
     if (q.get('ids')) { const blocked = P !== ALL; const items = q.get('ids').split(',').map(Number).map(i => byId.get(i)).filter(Boolean).map(p => (blocked && AD_IMG.test(p.image || '') ? { ...p, image: null } : p)); return { items, total: items.length }; }
     const age = q.get('age'), cat = q.get('category'), src = q.get('source'), brand = q.get('brand'), text = (q.get('q') || '').trim(), sort = q.get('sort') || 'popular';
     let list = P.filter(p => (!cat || cat === 'all' || p.category === cat) && (!src || src === 'all' || src.split(',').includes(p.source)) && (!brand || brand.split('|').includes(p.brand)));
-    if (text) { const terms = text.toLowerCase().split(/\s+/); list = list.filter(p => terms.every(t => [p.title, p.brand, p.keyword, p.mall].some(f => (f || '').toLowerCase().includes(t)))); }
+    if (text) {
+      // 검색 별칭(2026-11-17, Dgod): 붙여 쓴 검색어를 'A또는B' + 'C또는D' 조건으로 풀어서 찾음. 일반 검색어는 그대로.
+      const ALIAS = { '누빔코트': ['누빔|누비|퀼팅|퀄팅', '코트|패딩|점퍼|자켓|재킷|아우터'], '누빔자켓': ['누빔|누비|퀼팅|퀄팅', '자켓|재킷|점퍼|패딩'], '치이카와인형': ['치이카와|먼작귀', '인형'] };
+      const terms = text.toLowerCase().split(/\s+/).flatMap(t => ALIAS[t] || [t]);
+      list = list.filter(p => terms.every(t => t.split('|').some(v => [p.title, p.brand, p.keyword, p.mall].some(f => (f || '').toLowerCase().includes(v)))));
+    }
     const ageOk = age && age !== 'all';
     if (ageOk) list = list.filter(p => p.ages[age] || !Object.keys(p.ages).length).map(p => ({ ...p, ageRank: p.ages[age] || null }));
     else list = list.map(p => ({ ...p, ageRank: minRank(p) }));

@@ -489,3 +489,13 @@ body { word-break: keep-all; overflow-wrap: anywhere; }
 .tp-slot[data-af] { display: flex; justify-content: center; } .tp-slot[data-af] .kakao_ad_area { max-width: 100%; } /* 광고가 채워지기 전에는 높이 0 → 빈 상자 없음 */
 .tp-scard:has(.tp-slot[data-af]) { display: flex; justify-content: center; }
 .tp-sw.tp-cur { margin-top: 14px; } .tp-sw.tp-cur .tp-slot[data-af] { padding: 2px 0; }
+
+/* 모바일 레이아웃 밀림(CLS) 방지: 늦게 그려지는 영역 높이 미리 확보 */
+@media (max-width: 860px) {
+  .age-switch { min-height: 46px; }
+  .kw[hidden] { display: flex !important; visibility: hidden; min-height: 45px; }
+  .curations[hidden] { display: grid !important; visibility: hidden; min-height: 156px; }
+  .bar { min-height: 103px; }
+  .src-chips { min-height: 29px; }
+  .cat-viewport { min-height: 100vh; }
+}

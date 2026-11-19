@@ -186,7 +186,8 @@
       const p = byId.get(id); if (!p) throw new Error('상품 없음');
       const l = (await events(Date.now() - 30 * 864e5)).filter(e => e.p === id);
       const daily = Object.entries(groupBy(l, e => ymd(new Date(e.ts)))).map(([d, x]) => ({ d, views: cnt(x, e => e.t === 'view'), clicks: cnt(x, e => e.t === 'click') })).sort((a, b) => a.d < b.d ? -1 : 1);
-      return { ...full(p), priceHistory: p.priceHistory || [], daily };
+      const ph = await fetch(new URL('price.json', document.querySelector('script[src*="catalog.js"]')?.src || location.origin + '/data/catalog.js').href).then(r => r.json()).catch(() => ({})); // 가격 이력 분리(2026-11-19)
+      return { ...full(p), priceHistory: ph[id] || p.priceHistory || [], daily };
     },
     '/api/admin/keywords': async () => { const kwN = {}; P.forEach(p => { if (p.keyword) kwN[p.keyword] = (kwN[p.keyword] || 0) + 1; }); const rows = (DATA.keywords?.rows || []).filter(r => r.rank <= 10).map(r => ({ ...r, products: kwN[r.keyword] || 0 })); return { date: DATA.keywords?.date, dates: [DATA.keywords?.date], rows }; },
     '/api/admin/curations': async () => (DATA.meta.curations || []).map(c => ({ ...c, active: 1 })),

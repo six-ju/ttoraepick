@@ -22,6 +22,8 @@
       .then(() => { apply(false); save('ok'); }, () => { apply(true); save('blocked'); });
     return Promise.race([probe, new Promise(r => setTimeout(r, 1500))]);
   })();
+  const PH_URL = new URL('price.json', document.querySelector('script[src*="catalog.js"]')?.src || location.origin + '/data/catalog.js');
+  let phP; const loadPH = () => (phP ||= origFetch(PH_URL.href).then(r => r.json()).catch(() => ({}))); // 가격 이력(data/price.json, 2026-11-19 분리)
   const minRank = p => { const v = Object.values(p.ages || {}); return v.length ? Math.min(...v) : null; };
   const SORT = {
     popular: (a, b) => (b.pinned - a.pinned) || (b.score - a.score),
@@ -57,11 +59,11 @@
     const off = +q.get('offset') || 0, lim = Math.min(+q.get('limit') || 24, 60);
     return { items: list.slice(off, off + lim), total: list.length };
   }
-  function detail(id) {
+  function detail(id, ph = {}) {
     const p = byId.get(id);
     if (!p) return null;
     const related = P.filter(x => x.category === p.category && x.id !== p.id).sort((a, b) => ((b.brand === p.brand) - (a.brand === p.brand)) || b.score - a.score).slice(0, 8);
-    return { ...p, priceHistory: p.priceHistory || [], related };
+    return { ...p, priceHistory: ph[id] || p.priceHistory || [], related };
   }
   function brands(q) {
     const cat = q.get('category'), src = q.get('source'), m = new Map();
@@ -92,7 +94,7 @@
     const u = new URL(url, 'http://x'), q = u.searchParams, path = u.pathname;
     if (path === '/api/meta') return ok(D.meta);
     if (path === '/api/products') return ok(products(q));
-    const m = path.match(/^\/api\/products\/(\d+)$/); if (m) return ok(detail(+m[1]));
+    const m = path.match(/^\/api\/products\/(\d+)$/); if (m) return loadPH().then(ph => ok(detail(+m[1], ph)));
     if (path === '/api/brands') return ok(brands(q));
     if (path === '/api/sources') { const cat = q.get('category'), m = {}; P.forEach(p => { if (!cat || cat === 'all' || p.category === cat) m[p.source] = (m[p.source] || 0) + 1; }); return ok(Object.entries(m).map(([code, count]) => ({ code, count }))); }
     if (path === '/api/keywords') return ok(keywords(q));

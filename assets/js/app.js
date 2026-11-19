@@ -316,7 +316,7 @@
     const ageTags = ranks.slice(0, 3).map(([a, r]) => `<span class="age-tag ${a === state.age ? 'cur' : ''}">${a === '60' ? '60대+' : a + '대'} ${r}위</span>`).join('');
     return `<article class="card" data-id="${p.id}" style="--i:${i % 12}">
       <button class="card-hit" data-open="${p.id}" aria-label="${esc(p.title)} 상세 보기">
-        <div class="thumb"><img src="${esc(p.image || PLACEHOLDER)}" alt="" loading="${i < 8 ? 'eager' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">
+        <div class="thumb"><img src="${esc(p.image || PLACEHOLDER)}" alt="" loading="${i < 4 ? 'eager' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">
           ${showRank ? `<span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span>` : ''}
           <span class="src-badge ${p.source}" style="--c:${src.color || '#333'}">${esc(src.name || p.source)}</span>
           ${p.metric && METRIC[p.metric] ? `<span class="metric">${METRIC[p.metric]}</span>` : ''}

@@ -4,25 +4,42 @@
   'use strict';
   window.TP_STATIC = true;
   const D = window.TP_DATA;
-  const ALL = D.products; // shaped + go(구매 링크)
+  // 연령별 조각 모드(2026-11-24, yStl): data/core.js(메타·키워드) + data/p_<연령>.json. D.shards 가 없으면 예전처럼 catalog.js 전체를 씀.
+  const SH = D.shards || null;
+  const ALL = SH ? [] : D.products; // shaped + go(구매 링크)
   const byId = new Map(ALL.map(p => [p.id, p]));
   // 광고 차단 프로그램이 ads-partners.coupang.com 이미지를 막는 브라우저에서는 그 이미지를 쓰는 상품을 목록에서 뺀다
   // (안 빼면 'NO IMAGE' 카드가 순위에 섞여 보임). 공유 링크·찜(ids, 상세)은 그대로 찾을 수 있게 byId는 전체 유지.
   const AD_IMG = /^https?:\/\/ads-partners\.coupang\.com\//;
-  let P = ALL;
-  const imgProbe = (() => {
+  let P = ALL, blockedState = null, probeP = null;
+  const rebuildP = () => { P = blockedState ? ALL.filter(p => !AD_IMG.test(p.image || '')) : ALL; };
+  const startProbe = () => {
+    if (probeP) return;
     const sample = ALL.find(p => AD_IMG.test(p.image || ''));
-    if (!sample) return Promise.resolve();
-    const apply = blocked => { P = blocked ? ALL.filter(p => !AD_IMG.test(p.image || '')) : ALL; };
+    if (!sample) { if (!SH) probeP = Promise.resolve(); return; } // 조각 모드는 조각이 더 들어오면 다시 찾음
+    const apply = blocked => { blockedState = blocked; rebuildP(); };
     let saved = null; try { saved = sessionStorage.getItem('tp_adimg'); } catch { /* 무시 */ }
-    if (saved) { apply(saved === 'blocked'); return Promise.resolve(); }
+    if (saved) { apply(saved === 'blocked'); probeP = Promise.resolve(); return; }
     const save = v => { try { sessionStorage.setItem('tp_adimg', v); } catch { /* 무시 */ } };
     // HEAD + no-cors: 응답이 오면(상태 무관) 막히지 않은 것, 바로 실패하면 차단된 것
     const probe = window.fetch(sample.image, { method: 'HEAD', mode: 'no-cors', credentials: 'omit', cache: 'no-store' })
       .then(() => { apply(false); save('ok'); }, () => { apply(true); save('blocked'); });
-    return Promise.race([probe, new Promise(r => setTimeout(r, 1500))]);
-  })();
-  const PH_URL = new URL('price.json', document.querySelector('script[src*="catalog.js"]')?.src || location.origin + '/data/catalog.js');
+    probeP = Promise.race([probe, new Promise(r => setTimeout(r, 1500))]);
+  };
+  const imgProbe = { then: (f, r) => { startProbe(); return (probeP || Promise.resolve()).then(f, r); } };
+  const BASE = (document.querySelector('script[src*="catalog.js"], script[src*="core.js"]')?.src) || location.origin + '/data/catalog.js';
+  const shardP = {}; let noneDone = false;
+  const mergeShard = list => { for (const p of list) if (!byId.has(p.id)) { byId.set(p.id, p); ALL.push(p); } ALL.sort((a, b) => a.o - b.o); D.products = ALL; rebuildP(); }; // o = 원래 순서(점수순) 번호, 같은 값끼리 정렬 순서가 예전과 같게
+  const loadShard = k => (shardP[k] ||= (async () => {
+    const url = new URL('p_' + k + '.json', BASE).href;
+    let r = await origFetch(url); if (!r.ok) r = await origFetch(url, { cache: 'reload' });
+    if (!r.ok) throw new Error('shard ' + k);
+    mergeShard(await r.json()); if (k === 'none') noneDone = true;
+  })().catch(e => { delete shardP[k]; throw e; }));
+  const ensure = ks => Promise.all(ks.map(loadShard));
+  const ensureAll = () => (SH ? ensure(Object.keys(SH)) : Promise.resolve());
+  startProbe();
+  const PH_URL = new URL('price.json', BASE);
   let phP; const loadPH = () => (phP ||= origFetch(PH_URL.href).then(r => r.json()).catch(() => ({}))); // 가격 이력(data/price.json, 2026-11-19 분리)
   const minRank = p => { const v = Object.values(p.ages || {}); return v.length ? Math.min(...v) : null; };
   const SORT = {
@@ -36,7 +53,7 @@
     new: (a, b) => b.id - a.id,
   };
   function products(q) {
-    if (q.get('ids')) { const blocked = P !== ALL; const items = q.get('ids').split(',').map(Number).map(i => byId.get(i)).filter(Boolean).map(p => (blocked && AD_IMG.test(p.image || '') ? { ...p, image: null } : p)); return { items, total: items.length }; }
+    if (q.get('ids')) { const blocked = blockedState === true; const items = q.get('ids').split(',').map(Number).map(i => byId.get(i)).filter(Boolean).map(p => (blocked && AD_IMG.test(p.image || '') ? { ...p, image: null } : p)); return { items, total: items.length }; }
     const age = q.get('age'), cat = q.get('category'), src = q.get('source'), brand = q.get('brand'), text = (q.get('q') || '').trim(), sort = q.get('sort') || 'popular';
     let list = P.filter(p => (!cat || cat === 'all' || p.category === cat) && (!src || src === 'all' || src.split(',').includes(p.source)) && (!brand || brand.split('|').includes(p.brand)));
     if (text) {
@@ -58,6 +75,24 @@
     } else list.sort(SORT[sort] || SORT.popular);
     const off = +q.get('offset') || 0, lim = Math.min(+q.get('limit') || 24, 60);
     return { items: list.slice(off, off + lim), total: list.length };
+  }
+  // 조각 모드: 연령 인기순 첫 화면은 그 연령 조각만으로 답하고(순위 있는 상품이 충분할 때), 나머지는 잠시 뒤 백그라운드로 받음
+  async function productsX(q) {
+    if (!SH) return products(q);
+    const age = q.get('age'), ageOk = age && age !== 'all', cat = q.get('category'), src = q.get('source'), text = (q.get('q') || '').trim();
+    const fast = !q.get('ids') && ageOk && SH[age] != null && (q.get('sort') || 'popular') === 'popular' && !text && !q.get('brand') && !(src && src.includes(',')) && !D.nonePinned;
+    if (fast) {
+      await ensure([age]); startProbe(); if (probeP) await probeP;
+      const r = products(q), need = (+q.get('offset') || 0) + Math.min(+q.get('limit') || 24, 60);
+      if (noneDone) return r;
+      if (r.total >= need) {
+        setTimeout(() => ensureAll().catch(() => {}), 2500);
+        const key = (cat && cat !== 'all' ? cat : '') + '|' + (src && src !== 'all' ? src : '');
+        return { items: r.items, total: r.total + ((D.noneCnt || {})[key] || 0) - (blockedState ? (D.noneAd || {})[key] || 0 : 0) };
+      }
+    }
+    await ensureAll(); startProbe(); if (probeP) await probeP;
+    return products(q);
   }
   function detail(id, ph = {}) {
     const p = byId.get(id);
@@ -93,12 +128,13 @@
   const route = url => {
     const u = new URL(url, 'http://x'), q = u.searchParams, path = u.pathname;
     if (path === '/api/meta') return ok(D.meta);
-    if (path === '/api/products') return ok(products(q));
-    const m = path.match(/^\/api\/products\/(\d+)$/); if (m) return loadPH().then(ph => ok(detail(+m[1], ph)));
-    if (path === '/api/brands') return ok(brands(q));
+    if (path === '/api/products') return productsX(q).then(ok);
+    const m = path.match(/^\/api\/products\/(\d+)$/); if (m) return Promise.all([ensureAll(), loadPH()]).then(([, ph]) => ok(detail(+m[1], ph)));
+    if (path === '/api/brands') return ensureAll().then(() => ok(brands(q)));
+    if (path === '/api/sources' && SH) { const c = q.get('category'); const k = c && c !== 'all' ? c : '', ad = blockedState ? (D.srcAd || {})[k] || {} : {}; return ok(Object.entries((D.srcCnt || {})[k] || {}).map(([code, count]) => ({ code, count: count - (ad[code] || 0) })).filter(x => x.count > 0)); }
     if (path === '/api/sources') { const cat = q.get('category'), m = {}; P.forEach(p => { if (!cat || cat === 'all' || p.category === cat) m[p.source] = (m[p.source] || 0) + 1; }); return ok(Object.entries(m).map(([code, count]) => ({ code, count }))); }
     if (path === '/api/keywords') return ok(keywords(q));
-    if (path === '/api/suggest') return ok(suggest(q));
+    if (path === '/api/suggest') return ensureAll().then(() => ok(suggest(q)));
     if (path === '/api/events') return ok({ ok: true });
     return ok(null);
   };

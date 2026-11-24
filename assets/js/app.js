@@ -4,7 +4,6 @@
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const sm = u => { const m = /^https:\/\/(?:img|image)\w*\.coupangcdn\.com(\/image\/.+)$/.exec(u || ''); return m ? 'https://thumbnail6.coupangcdn.com/thumbnails/remote/360x360ex' + m[1] : u; }; // 카드용 작은 이미지(yStl)
   const won = n => (n || n === 0) ? Number(n).toLocaleString('ko-KR') + '원' : '가격 확인';
   const num = n => Number(n || 0).toLocaleString('ko-KR');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -317,7 +316,7 @@
     const ageTags = ranks.slice(0, 3).map(([a, r]) => `<span class="age-tag ${a === state.age ? 'cur' : ''}">${a === '60' ? '60대+' : a + '대'} ${r}위</span>`).join('');
     return `<article class="card" data-id="${p.id}" style="--i:${i % 12}">
       <button class="card-hit" data-open="${p.id}" aria-label="${esc(p.title)} 상세 보기">
-        <div class="thumb"><img src="${esc(sm(p.image || PLACEHOLDER))}" data-o="${esc(p.image || PLACEHOLDER)}" onerror="this.onerror=null;this.src=this.dataset.o" alt="" loading="${i < 4 ? 'eager' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">
+        <div class="thumb"><img src="${esc(p.image || PLACEHOLDER)}" alt="" loading="${i < 4 ? 'eager' : 'lazy'}" decoding="async" referrerpolicy="no-referrer">
           ${showRank ? `<span class="rank ${i < 3 ? 'top' : ''}">${i + 1}</span>` : ''}
           <span class="src-badge ${p.source}" style="--c:${src.color || '#333'}">${esc(src.name || p.source)}</span>
           ${p.metric && METRIC[p.metric] ? `<span class="metric">${METRIC[p.metric]}</span>` : ''}

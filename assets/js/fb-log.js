@@ -1,6 +1,6 @@
 /* 또래픽 방문 행동 기록 → Firebase Firestore (정적 사이트용)
    - 보안 규칙상 '생성'만 가능하고, 읽기는 관리자(사장님 구글 계정)만 가능
-   - 개발 환경(file://, localhost), 자동화 브라우저, 관리자 본인 방문은 기록하지 않음 */
+   - 개발 환경(file://, localhost), 자동화 브라우저, 관리자 본인 방문, 봇·속도 점검 UA, ?internal=1 로 표시한 브라우저는 기록하지 않음 (MHpN) */
 (() => {
   'use strict';
   const C = window.TP_FB;
@@ -17,7 +17,9 @@
   })().catch(e => { console.warn('[tp] 기록 모듈 로드 실패', e); return null; }));
   const device = () => /iPad|Tablet/i.test(navigator.userAgent) ? 'tablet' : /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
   const str = (v, n) => String(v).slice(0, n);
-  const skip = () => location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || navigator.webdriver || localStorage.getItem('tp_owner') === '1';
+  const BOT = /bot|crawl|spider|slurp|lighthouse|pagespeed|headless|inspectiontool|gtmetrix|pingdom|uptime/i;
+  try { if (/[?&]internal=1(&|$)/.test(location.search)) localStorage.setItem('tp_owner', '1'); } catch { /* 무시 */ } // 점검·내 폰 등은 주소 끝에 ?internal=1 한 번 열면 이후 통계 제외
+  const skip = () => BOT.test(navigator.userAgent) || location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname) || navigator.webdriver || localStorage.getItem('tp_owner') === '1';
 
   window.TP_LOG = async (events) => {
     if (skip() || !events || !events.length) return;
